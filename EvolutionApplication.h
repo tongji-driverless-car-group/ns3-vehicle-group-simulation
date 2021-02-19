@@ -74,6 +74,12 @@ public:
     
     //发送心跳包
     void SendHello();
+
+    // 查看附近是否有障碍物
+    bool CheckObstacle();
+
+    // 查看是否有节点失联
+    bool CheckMissing();
 private:
     //StartApplication函数是应用启动后第一个调用的函数
     void StartApplication();
@@ -89,6 +95,16 @@ private:
     Time m_check_missing_interval;//检查丢失节点的周期
     Time m_hello_interval; //发送心跳包的间隔
     WifiMode m_mode; //wifi的模式
+
+    // ------------ 避障相关 --------------
+    bool m_is_simulate_avoid_obstacle; // 是否仿真避障
+    Vector m_obstacle; // 障碍物信息，单障碍物，初始化时设置
+    int m_safe_avoid_obstacle_distance; // 单位：m, 与障碍物之间的安全距离，超过则发避障消息
+    Time m_check_obstacle_interval; // 检查丢失节点的周期
+
+    // ------------ 节点失联相关 -------------
+    bool m_is_simulate_node_missing; // 是否仿真节点失联
+
 };
 
 #endif

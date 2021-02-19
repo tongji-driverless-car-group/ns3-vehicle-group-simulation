@@ -19,8 +19,8 @@ int main (int argc, char *argv[])
     CommandLine cmd;
     cmd.Parse (argc, argv);
 
-    uint32_t nNodes = 2;//节点数目
-    double simTime = 5; //仿真时间
+    uint32_t nNodes = 4;//节点数目
+    double simTime = 23; //仿真时间
 
     NodeContainer nodes;
     nodes.Create(nNodes);
@@ -28,16 +28,15 @@ int main (int argc, char *argv[])
     LogComponentEnable ("EvolutionApplication", LOG_LEVEL_FUNCTION);
       
     //使用NS3的移动模型，可以修改为SUMO的FCD输出
-//    Ns2MobilityHelper mobility("/home/ljy/ns-allinone-3.30/ns-3.30/scratch/simpleWAVEAppliation/mobility.tcl");
-//    mobility.Install(nodes.Begin(),nodes.End());
-    MobilityHelper mobility;
-    Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-    positionAlloc->Add (Vector (1, 2, 3));
-    positionAlloc->Add (Vector (1, 0.0, 0.0));
-    mobility.SetPositionAllocator (positionAlloc);
-    mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-    mobility.Install (nodes);
-  
+    Ns2MobilityHelper mobility("/home/lk/Documents/workspace/avoidObstacle/mobility.tcl");
+    mobility.Install(nodes.Begin(),nodes.End());
+    // MobilityHelper mobility;
+    // Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
+    // positionAlloc->Add (Vector (1, 2, 3));
+    // positionAlloc->Add (Vector (1, 0.0, 0.0));
+    // mobility.SetPositionAllocator (positionAlloc);
+    // mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+    // mobility.Install (nodes);
 
     // The below set of helpers will help us to put together the wifi NICs we want
     YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
