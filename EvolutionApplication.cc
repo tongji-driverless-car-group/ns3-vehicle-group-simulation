@@ -133,7 +133,6 @@ void EvolutionApplication::SendToLeader(Ptr<Packet> packet, Address addr){
 
 bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packet> packet,uint16_t protocol, const Address &sender)
 {   
-    std::cout<<"receive"<<std::endl;
     MessageHeader tag;
     if (packet->PeekPacketTag (tag))
     {
@@ -146,7 +145,6 @@ bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packe
         switch(type){
             case HELLO:
                 memcpy(&apos, buffer, sizeof(apos));
-                std::cout<<apos.x<<' '<<apos.y<<' '<<apos.z<<std::endl;
                 break;
             case HELLO_R:
                 break;

@@ -5,7 +5,6 @@
 #include "ns3/wifi-phy.h"
 #include "ns3/vector.h"
 #include <vector>
-#include <set>
 #include <map>
 
 using namespace ns3;
@@ -83,13 +82,14 @@ public:
 private:
     //StartApplication函数是应用启动后第一个调用的函数
     void StartApplication();
-    
+   
+public: 
     NodeState m_state;//当前车辆的状态
     Ptr<WifiNetDevice> m_wifiDevice; //车辆的WAVE设备  
-    std::set <NeighborInformation> m_next; //节点的子节点列表
+    std::vector <NeighborInformation> m_next; //节点的子节点列表
     NeighborInformation m_parent; //节点的父节点
     NeighborInformation m_leader; //车群的leader信息
-    std::set<NeighborInformation> m_neighbor_leaders;//其它邻近leader信息，只有车群的leader维护这个表
+    std::vector<NeighborInformation> m_neighbor_leaders;//其它邻近leader信息，只有车群的leader维护这个表
     std::map<Address,Address> m_router; //路由信息router[mac]即为发送到mac消息下一跳要发送的节点
     Time m_time_limit; //移除超过m_time_limit未通信的节点
     Time m_check_missing_interval;//检查丢失节点的周期
