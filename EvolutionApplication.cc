@@ -232,13 +232,13 @@ bool EvolutionApplication::CheckObstacle()
         tag.SetDesAddr(Mac48Address::GetBroadcast());
         packet->AddPacketTag(tag);
         std::set<NeighborInformation>::iterator it;
-        for(it = m_neighbor_leaders.begin(); it != m_neighbor_leaders.end(); it++) {
-            SendToLeader(packet, it->mac);
-        }
+        // for(it = m_neighbor_leaders.begin(); it != m_neighbor_leaders.end(); it++) {
+        //     SendToLeader(packet, it->mac);
+        // }
     } else {
         tag.SetDesAddr(Mac48Address::GetBroadcast());
         packet->AddPacketTag(tag);
-        SendToLeader(packet);
+        // SendToLeader(packet);
     }
     
     return true;
