@@ -34,7 +34,7 @@ EvolutionApplication::EvolutionApplication()
     m_mode = WifiMode(WIFI_MODE);
 
     // ! 如果需要开启哪些功能的仿真，就需要把开关打开
-
+    // std::cout << "hello" << std::endl;
     // ---------- 避障相关 -------------
     m_is_simulate_avoid_obstacle = true;
     m_check_obstacle_interval = Seconds(1);
@@ -75,7 +75,7 @@ void EvolutionApplication::StartApplication()
         Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable> ();
         Time random_offset = MicroSeconds (rand->GetValue(50,200));
         //每m_hello_interval秒发送心跳包
-        //Simulator::Schedule (m_hello_interval+random_offset, &EvolutionApplication::SendHello, this);
+        // Simulator::Schedule (m_hello_interval+random_offset, &EvolutionApplication::SendHello, this);
     }
     else
     {
@@ -109,18 +109,34 @@ void EvolutionApplication::BroadcastInformation(Ptr<Packet> packet)
 }
 
 void EvolutionApplication::SendInformation(Ptr<Packet> packet, Address addr){
-    m_wifiDevice->Send (packet, m_router[addr], 0x88dc);
+    // std::cout << m_router[addr] << std::endl;
+    Address dest_addr; // 目的地址
+    if (addr == m_leader.mac) {
+        dest_addr = m_leader.mac;
+    } else if (addr == m_parent.mac) {
+        dest_addr = m_parent.mac;
+    } else {
+        dest_addr = m_router[addr];
+    }
+    m_wifiDevice->Send (packet, dest_addr, 0x88dc);
 }
 
-void EvolutionApplication::SendGroupInformation(Ptr<Packet> packet, Address addr){
-    
+void EvolutionApplication::SendGroupInformation(Ptr<Packet> packet){
+    if (!isLeader()) {
+        NS_LOG_ERROR("只有Leader可以向子车群发送消息");
+    }
+
+    for(std::map<Address,Address>::iterator iter = m_router.begin();
+        iter != m_router.end(); iter++){
+        SendInformation(packet, iter->first);
+    }
 }
 
 void EvolutionApplication::SendToLeader(Ptr<Packet> packet){
     if(isLeader()){
         NS_FATAL_ERROR ("leader 不能发送消息给自己");
     }
-    NS_LOG_DEBUG(m_leader.mac);
+    // std::cout << m_leader.mac << std::endl;
     SendInformation(packet, m_leader.mac);
 }
 
@@ -141,6 +157,10 @@ bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packe
         uint8_t* buffer = new uint8_t[payloadSize];
         packet->CopyData(buffer,payloadSize);
         uint8_t type = tag.GetType();
+        bool isGroup = type & GROUP_MESSAGE;
+        type &= ~(GROUP_MESSAGE);
+        std::cout << (int)tag.GetType() << " isGroup: " << isGroup << ", " << type << std::endl;
+        
         Vector apos;
         switch(type){
             case HELLO:
@@ -159,6 +179,9 @@ bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packe
                     std::cout << "正在避障" << std::endl;
                 }
                 break;
+            case AVOID_MESSAGE:
+                std::cout << "avoid" << std::endl;
+                break;
             case MISSING_MESSAGE:
                 // 如果是leader，switchLeader
                 // 如果是普通节点，则向其leader发送查找节点命令
@@ -175,8 +198,20 @@ bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packe
                     std::cout << "正在搜寻节点" << std::endl;
                 }
             default:
+                std::cout << "unknown message type" << std::endl;
                 break;
         }
+        
+        // 如果是组播 还需要继续转发消息，目前只有一个车群的组播，子节点的信息都在router里
+        if (isGroup) {
+            Ptr<Packet> new_packet = new Packet(*packet);
+            // todo test
+            for (std::map<Address,Address>::iterator iter = m_router.begin();
+                iter != m_router.end(); iter++) {
+                SendInformation(new_packet, iter->first);
+            }
+        }
+        
         delete buffer;
     }
 
@@ -206,7 +241,8 @@ bool EvolutionApplication::CheckObstacle()
 
     // 取整曼哈顿距离近似计算；不使用浮点数，加快运算；基本上不涉及z轴，不计算
     int dist = abs((int)m_obstacle.x - (int)curPos.x) + abs((int)m_obstacle.y - (int)curPos.y);
-    if (dist < m_safe_avoid_obstacle_distance) {
+    // std::cout << "distance: " << dist << std::endl;
+    if (dist > m_safe_avoid_obstacle_distance) {
         return false; // 没遇到障碍，或者太远不需要避障
     }
     // std::cout << "distance: " << dist << std::endl;
@@ -227,18 +263,27 @@ bool EvolutionApplication::CheckObstacle()
     tag.SetPayloadSize(payloadSize);
     tag.SetSrcAddr(m_wifiDevice->GetAddress());
 
-    // 遇到障碍，如果是leader，通知子车群避障；如果是普通子节点，通知leader
+    // 遇到障碍，如果是leader，通知子车群和其它车群leader避障；如果是普通子节点，通知leader
     if (isLeader()) {
         tag.SetDesAddr(Mac48Address::GetBroadcast());
         packet->AddPacketTag(tag);
-        std::set<NeighborInformation>::iterator it;
-        // for(it = m_neighbor_leaders.begin(); it != m_neighbor_leaders.end(); it++) {
-        //     SendToLeader(packet, it->mac);
-        // }
+        std::vector<NeighborInformation>::iterator it;
+        for(it = m_neighbor_leaders.begin(); it != m_neighbor_leaders.end(); it++) {
+            std::cout << "hello1" << std::endl;
+            SendToLeader(packet, it->mac);
+        }
+
+        // 通知子车群避障
+        Ptr<Packet> packetForSon = Create<Packet>(buffer, payloadSize);
+        tag.SetType(AVOID_MESSAGE | GROUP_MESSAGE); // 组播
+        packetForSon->AddPacketTag(tag);
+        SendGroupInformation(packetForSon);
     } else {
         tag.SetDesAddr(Mac48Address::GetBroadcast());
         packet->AddPacketTag(tag);
-        // SendToLeader(packet);
+        std::cout << "hello2" << std::endl;
+        // PrintRouter();
+        SendToLeader(packet);
     }
     
     return true;
@@ -252,6 +297,15 @@ bool EvolutionApplication::CheckMissing()
 void switchLeader()
 {
     
+}
+
+void EvolutionApplication::PrintRouter() {
+    std::cout << "======= begin print router =======" << std::endl;
+    for (std::map<Address,Address>::iterator iter = m_router.begin();
+        iter != m_router.end(); iter++) {
+        std::cout << iter->first << " : " << iter->second << std::endl;
+    }
+    std::cout << "======= end print router =======" << std::endl;
 }
 
 void EvolutionApplication::SendHello (){

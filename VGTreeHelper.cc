@@ -55,7 +55,7 @@ void VGTreeHelper::PrintTree(VGTree* T, int space_num){
     if(T==NULL){
         return ;
     }
-    cout << T->node_id <<endl;
+    cout << T->node_id+1 <<endl;
     if(T->c_num==0){
         return ;
     }

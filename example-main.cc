@@ -23,8 +23,11 @@ int main (int argc, char *argv[])
     CommandLine cmd;
     cmd.Parse (argc, argv);
     
-    TestVGTreeHelper();
-    TestGroupInitialer();
+    // TestVGTreeHelper();
+    // TestGroupInitialer();
+
+    // 车群避障策略测试
+    TestAvoidObstable();
 
 //    uint32_t nNodes = 2;//节点数目
 //    double simTime = 5; //仿真时间

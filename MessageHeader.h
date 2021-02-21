@@ -19,6 +19,8 @@ const uint8_t SEARCH_MESSAGE = 9;
 const uint8_t TRANSFER_MESSAGE = 10; 
 const uint8_t OBSTACLE_MESSAGE = 11; 
 const uint8_t ADJUST_MESSAGE = 12; 
+const uint8_t AVOID_MESSAGE = 13;
+const uint8_t GROUP_MESSAGE = 0x80;
 
 namespace ns3
 {

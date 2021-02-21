@@ -50,8 +50,8 @@ public:
     //向指定节点单播
     void SendInformation(Ptr<Packet> packet, Address addr);
     
-    //向指定子车群组播 哪里需要用到暂时不明 没有实现
-    void SendGroupInformation(Ptr<Packet> packet, Address addr);
+    // 只有leader能调用，给自己的子车群发消息
+    void SendGroupInformation(Ptr<Packet> packet);
     
     //向车群leader发送消息
     void SendToLeader(Ptr<Packet> packet);
@@ -79,6 +79,9 @@ public:
 
     // 查看是否有节点失联
     bool CheckMissing();
+
+    // for debug
+    void PrintRouter();
 private:
     //StartApplication函数是应用启动后第一个调用的函数
     void StartApplication();

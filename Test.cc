@@ -43,7 +43,7 @@ void TestGroupInitialer(){
     
     vh.AddLeader(0);
     vh.AddSubNodesFor(vector<int>({1,2}), 0);
-    vh.AddSubNodesFor(vector<int>({3,4}), 0);
+    vh.AddSubNodesFor(vector<int>({3,4}), 2);
     gi.AddGroup(vh.GetTree());
     
     //group2
@@ -68,6 +68,74 @@ void TestGroupInitialer(){
     gi.AddLink(0,5);
     gi.AddLink(5,8);
     gi.AddLink(0,8);
+    
+    gi.PrintGroupStructures();
+    
+    // The below set of helpers will help us to put together the wifi NICs we want
+    YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
+    YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
+    Ptr<YansWifiChannel> channel = wifiChannel.Create ();
+    wifiPhy.SetChannel (channel);
+  
+    //可以调节通信距离
+//    wifiPhy.Set ("TxPowerStart", DoubleValue (20) );
+//    wifiPhy.Set ("TxPowerEnd", DoubleValue (40) );
+
+  // ns-3 supports generate a pcap trace
+    wifiPhy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11);
+    NqosWaveMacHelper wifi80211pMac = NqosWaveMacHelper::Default ();
+    Wifi80211pHelper wifi80211p = Wifi80211pHelper::Default ();
+
+    wifi80211p.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
+                                      "DataMode",StringValue ("OfdmRate6MbpsBW10MHz"),
+                                      "ControlMode",StringValue ("OfdmRate6MbpsBW10MHz"));
+    NetDeviceContainer devices = wifi80211p.Install (wifiPhy, wifi80211pMac, nodes);
+
+    //为节点添加应用
+    for (uint32_t i=0; i<nodes.GetN(); i++)
+    {
+        Ptr<EvolutionApplication> app_i = CreateObject<EvolutionApplication>();
+        app_i->SetStartTime (Seconds (0));
+        app_i->SetStopTime (Seconds (simTime));
+        nodes.Get(i)->AddApplication (app_i);
+    }
+
+    Simulator::Stop(Seconds(simTime));
+    
+    //初始化车群
+    gi.Construct(nodes);
+  
+    //netAnim可视化
+//    AnimationInterface anim("EvolutionApplication.xml");
+//    anim.SetMobilityPollInterval (Seconds (1));
+  
+    Simulator::Run();
+
+    Simulator::Destroy();
+}
+
+void TestAvoidObstable() {
+    uint32_t nNodes = 4;//节点数目
+    double simTime = 28; //仿真时间
+
+    NodeContainer nodes;
+    nodes.Create(nNodes);
+  
+    LogComponentEnable ("EvolutionApplication", LOG_LEVEL_FUNCTION);
+    
+   //使用NS3的移动模型，可以修改为SUMO的FCD输出
+    Ns2MobilityHelper mobility("/home/lk/Documents/workspace/avoidObstacle/mobility.tcl");
+    mobility.Install(nodes.Begin(),nodes.End());
+
+    VGTreeHelper vh;
+    GroupInitializer gi;
+    
+    // group1
+    vh.AddLeader(1);
+    vh.AddSubNodesFor(vector<int>({0, 2, 3}), 1);
+    gi.AddGroup(vh.GetTree());
+    
+    //add link between groups
     
     gi.PrintGroupStructures();
     
