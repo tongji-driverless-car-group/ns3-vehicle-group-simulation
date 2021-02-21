@@ -80,7 +80,7 @@ void GroupInitializer::ConstructLinkBetweenGroups(NodeContainer& nodes){
             node_app->m_neighbor_leaders.push_back(other_leader_info);
             
             //添加路由
-            node_app.m_router[other_leader_info.mac] = other_leader_info.mac;
+            node_app->m_router[other_leader_info.mac] = other_leader_info.mac;
         }
         
     }
