@@ -34,7 +34,7 @@ void GroupInitializer::ConstructVehicleGroup(VGTree* root, VGTree* t,VGTree* par
         Ptr<EvolutionApplication> leader_app = DynamicCast<EvolutionApplication>(leader_node->GetApplication(0));
         leader_info.mac = leader_dev->GetAddress();
         leader_info.last_beacon = Now();
-        //leader_info.pos = leader_app->GetNode()->GetObject<MobilityModel>()->GetPosition();
+        //leader_info.pos = leader_node->GetObject<MobilityModel>()->GetPosition();
         node_app->m_leader = leader_info;
     }
     
@@ -46,7 +46,7 @@ void GroupInitializer::ConstructVehicleGroup(VGTree* root, VGTree* t,VGTree* par
         NeighborInformation child_info;
         child_info.mac = child_dev->GetAddress();
         child_info.last_beacon = Now();
-        //child_info.pos = child_app->GetNode()->GetObject<MobilityModel>()->GetPosition();
+        //child_info.pos = child_node->GetObject<MobilityModel>()->GetPosition();
         node_app->m_next.push_back(child_info); 
         
         //路由信息
@@ -78,7 +78,11 @@ void GroupInitializer::ConstructLinkBetweenGroups(NodeContainer& nodes){
             other_leader_info.last_beacon = Now();
             //other_leader_info.pos = other_leader->GetObject<MobilityModel>()->GetPosition();
             node_app->m_neighbor_leaders.push_back(other_leader_info);
+            
+            //添加路由
+            node_app.m_router[other_leader_info.mac] = other_leader_info.mac;
         }
+        
     }
 }
 
