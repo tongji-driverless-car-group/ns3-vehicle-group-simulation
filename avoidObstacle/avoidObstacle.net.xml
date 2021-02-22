@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2021年02月22日 星期一 12时33分49秒 by Eclipse SUMO netedit Version 1.8.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
+
+    <input>
+        <sumo-net-file value="/home/lk/Documents/workspace/avoidObstacle/avoidObstacle.net.xml"/>
+    </input>
+
+    <output>
+        <output-file value="/home/lk/Documents/workspace/avoidObstacle/avoidObstacle.net.xml"/>
+    </output>
+
+    <processing>
+        <geometry.min-radius.fix.railways value="false"/>
+        <geometry.max-grade.fix value="false"/>
+        <offset.disable-normalization value="true"/>
+        <lefthand value="false"/>
+    </processing>
+
+    <junctions>
+        <no-turnarounds value="true"/>
+        <junctions.corner-detail value="5"/>
+        <junctions.limit-turn-speed value="5.5"/>
+        <rectangular-lane-cut value="false"/>
+    </junctions>
+
+    <pedestrian>
+        <walkingareas value="false"/>
+    </pedestrian>
+
+    <netedit>
+        <route-files value="/home/lk/Documents/workspace/avoidObstacle/avoidObstacle.rou.xml"/>
+    </netedit>
+
+    <report>
+        <aggregate-warnings value="5"/>
+    </report>
+
+</configuration>
+-->
+
+<net version="1.6" junctionCornerDetail="5" limitTurnSpeed="5.50" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/net_file.xsd">
+
+    <location netOffset="0.00,0.00" convBoundary="0.00,0.00,200.00,0.00" origBoundary="-10000000000.00,-10000000000.00,10000000000.00,10000000000.00" projParameter="!"/>
+
+    <edge id=":j1_0" function="internal">
+        <lane id=":j1_0_0" index="0" speed="11.95" length="0.10" shape="100.00,-8.00 100.00,-8.00"/>
+        <lane id=":j1_0_1" index="1" speed="11.95" length="0.10" shape="100.00,-4.80 100.00,-4.80"/>
+        <lane id=":j1_0_2" index="2" speed="11.95" length="0.10" shape="100.00,-1.60 100.00,-1.60"/>
+    </edge>
+
+    <edge id="e01" from="j0" to="j1" priority="-1">
+        <lane id="e01_0" index="0" speed="10.00" length="100.00" shape="0.00,-8.00 100.00,-8.00"/>
+        <lane id="e01_1" index="1" speed="10.00" length="100.00" shape="0.00,-4.80 100.00,-4.80"/>
+        <lane id="e01_2" index="2" speed="10.00" length="100.00" shape="0.00,-1.60 100.00,-1.60"/>
+    </edge>
+    <edge id="gneE2" from="j1" to="gneJ4" priority="-1">
+        <lane id="gneE2_0" index="0" speed="13.89" length="100.00" shape="100.00,-8.00 200.00,-8.00"/>
+        <lane id="gneE2_1" index="1" speed="13.89" length="100.00" shape="100.00,-4.80 200.00,-4.80"/>
+        <lane id="gneE2_2" index="2" speed="13.89" length="100.00" shape="100.00,-1.60 200.00,-1.60"/>
+    </edge>
+
+    <tlLogic id="j1" type="static" programID="0" offset="0">
+        <phase duration="82" state="GGG"/>
+        <phase duration="3"  state="yyy"/>
+        <phase duration="5"  state="rrr"/>
+    </tlLogic>
+
+    <junction id="gneJ4" type="dead_end" x="200.00" y="0.00" incLanes="gneE2_0 gneE2_1 gneE2_2" intLanes="" shape="200.00,-9.60 200.00,0.00"/>
+    <junction id="j0" type="dead_end" x="0.00" y="0.00" incLanes="" intLanes="" shape="0.00,0.00 0.00,-9.60"/>
+    <junction id="j1" type="traffic_light" x="100.00" y="0.00" incLanes="e01_0 e01_1 e01_2" intLanes=":j1_0_0 :j1_0_1 :j1_0_2" shape="100.00,0.00 100.00,-9.60 100.00,0.00">
+        <request index="0" response="000" foes="000" cont="0"/>
+        <request index="1" response="000" foes="000" cont="0"/>
+        <request index="2" response="000" foes="000" cont="0"/>
+    </junction>
+
+    <connection from="e01" to="gneE2" fromLane="0" toLane="0" via=":j1_0_0" tl="j1" linkIndex="0" dir="s" state="O"/>
+    <connection from="e01" to="gneE2" fromLane="1" toLane="1" via=":j1_0_1" tl="j1" linkIndex="1" dir="s" state="O"/>
+    <connection from="e01" to="gneE2" fromLane="2" toLane="2" via=":j1_0_2" tl="j1" linkIndex="2" dir="s" state="O"/>
+
+    <connection from=":j1_0" to="gneE2" fromLane="0" toLane="0" dir="s" state="M"/>
+    <connection from=":j1_0" to="gneE2" fromLane="1" toLane="1" dir="s" state="M"/>
+    <connection from=":j1_0" to="gneE2" fromLane="2" toLane="2" dir="s" state="M"/>
+
+</net>

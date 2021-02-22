@@ -42,6 +42,9 @@ public:
     
     //判断自己是否是leader
     bool isLeader();
+
+    // 获取自己的mac地址，debug用
+    Address GetAddress();
         
     //向整个车群节点广播
     void BroadcastInformation(Ptr<Packet> packet);
@@ -50,8 +53,8 @@ public:
     //向指定节点单播
     void SendInformation(Ptr<Packet> packet, Address addr);
     
-    //向指定子车群组播 哪里需要用到暂时不明 没有实现
-    void SendGroupInformation(Ptr<Packet> packet, Address addr);
+    // 只有leader能调用，给自己的子车群发消息
+    void SendGroupInformation(Ptr<Packet> packet);
     
     //向车群leader发送消息
     void SendToLeader(Ptr<Packet> packet);
@@ -73,6 +76,15 @@ public:
     
     //发送心跳包
     void SendHello();
+
+    // 查看附近是否有障碍物
+    bool CheckObstacle();
+
+    // 查看是否有节点失联
+    bool CheckMissing();
+
+    // for debug
+    void PrintRouter();
 private:
     //StartApplication函数是应用启动后第一个调用的函数
     void StartApplication();
@@ -89,6 +101,16 @@ public:
     Time m_check_missing_interval;//检查丢失节点的周期
     Time m_hello_interval; //发送心跳包的间隔
     WifiMode m_mode; //wifi的模式
+
+    // ------------ 避障相关 --------------
+    bool m_is_simulate_avoid_obstacle; // 是否仿真避障
+    Vector m_obstacle; // 障碍物信息，单障碍物，初始化时设置
+    int m_safe_avoid_obstacle_distance; // 单位：m, 与障碍物之间的安全距离，超过则发避障消息
+    Time m_check_obstacle_interval; // 检查丢失节点的周期
+
+    // ------------ 节点失联相关 -------------
+    bool m_is_simulate_node_missing; // 是否仿真节点失联
+
 };
 
 #endif

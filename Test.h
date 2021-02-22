@@ -3,5 +3,6 @@
 
 void TestGroupInitialer();
 void TestVGTreeHelper();
+void TestAvoidObstable();
 
 #endif

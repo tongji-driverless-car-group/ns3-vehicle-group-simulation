@@ -12,9 +12,11 @@ void GroupInitializer::ConstructVehicleGroup(VGTree* root, VGTree* t,VGTree* par
     
     Ptr<Node> node = nodes.Get(t->node_id);
     Ptr<EvolutionApplication> node_app = DynamicCast<EvolutionApplication>(node->GetApplication(0));
+    NeighborInformation leader_info;
 
     if(t==root){
         node_app->m_state = LEADER_STATE;
+        
     }
     else{
         node_app->m_state = MEMBER_STATE;
@@ -28,7 +30,6 @@ void GroupInitializer::ConstructVehicleGroup(VGTree* root, VGTree* t,VGTree* par
         //parent_info.pos = parent_app->GetNode()->GetObject<MobilityModel>()->GetPosition();
         node_app->m_parent = parent_info;
         
-        NeighborInformation leader_info;
         Ptr<Node> leader_node = nodes.Get(root->node_id);
         Ptr<NetDevice> leader_dev = leader_node->GetDevice(0);
         Ptr<EvolutionApplication> leader_app = DynamicCast<EvolutionApplication>(leader_node->GetApplication(0));
@@ -36,6 +37,10 @@ void GroupInitializer::ConstructVehicleGroup(VGTree* root, VGTree* t,VGTree* par
         leader_info.last_beacon = Now();
         //leader_info.pos = leader_node->GetObject<MobilityModel>()->GetPosition();
         node_app->m_leader = leader_info;
+
+        // 在路由表里添加：<leader, parent>和<parent, parent>
+        // node_app->m_router[leader_info.mac] = parent_info.mac;
+        // node_app->m_router[parent_info.mac] = parent_info.mac;
     }
     
     for(int8_t i=0;i<t->c_num;i++){
@@ -51,11 +56,21 @@ void GroupInitializer::ConstructVehicleGroup(VGTree* root, VGTree* t,VGTree* par
         
         //路由信息
         for(map<Address,Address>::iterator iter=child_app->m_router.begin(); iter!=child_app->m_router.end();iter++){
+            // if (iter->first == child_dev->GetAddress()) { // <parent, parent>
+            //     continue;
+            // }
+            // if (iter->first == leader_info.mac) {
+            //     continue;
+            // }
             node_app->m_router[iter->first] = child_dev->GetAddress();
         }
         node_app->m_router[child_dev->GetAddress()] = child_dev->GetAddress();
         
     }
+
+    // debug
+    std::cout << t->node_id+1 << ":" << std::endl;
+    node_app->PrintRouter();
 }
 
 void GroupInitializer::ConstructLinkBetweenGroups(NodeContainer& nodes){
