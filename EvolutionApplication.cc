@@ -33,10 +33,10 @@ EvolutionApplication::EvolutionApplication()
     m_time_limit = Seconds (TIME_LIMIT);
     m_mode = WifiMode(WIFI_MODE);
 
-    // ! 如果需要开启哪些功能的仿真，就需要把开关打开
-    // std::cout << "hello" << std::endl;
+    // 各个参数的默认值，默认关闭，具体设置在Test.cc每一个testCase的函数里
+    
     // ---------- 避障相关 -------------
-    m_is_simulate_avoid_obstacle = true;
+    m_is_simulate_avoid_obstacle = false;
     m_check_obstacle_interval = Seconds(1);
     m_obstacle = Vector(60, -4.8, 0);
     m_safe_avoid_obstacle_distance = 21;

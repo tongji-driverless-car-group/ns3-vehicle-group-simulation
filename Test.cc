@@ -171,9 +171,20 @@ void TestAvoidObstable() {
     for (uint32_t i=0; i<nodes.GetN(); i++)
     {
         Ptr<EvolutionApplication> app_i = CreateObject<EvolutionApplication>();
+        // ======================= application 的一些参数的初始化 begin =============================
+        // 默认值见EvolutionApplication的构造函数
         app_i->SetStartTime (Seconds (0));
         app_i->SetStopTime (Seconds (simTime));
+
+        // ---------- 避障相关 -------------
+        app_i->m_is_simulate_avoid_obstacle = true;
+        app_i->m_check_obstacle_interval = Seconds(1);
+        app_i->m_obstacle = Vector(60, -4.8, 0);
+        app_i->m_safe_avoid_obstacle_distance = 21;
+
         nodes.Get(i)->AddApplication (app_i);
+        // ======================= application 的一些参数的初始化 end ===============================
+        
     }
 
     Simulator::Stop(Seconds(simTime));
