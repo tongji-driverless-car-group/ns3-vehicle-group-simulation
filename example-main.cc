@@ -23,7 +23,7 @@ int main (int argc, char *argv[])
     string tclFilePath = "scratch/ns3-vehicle-group-simulation/sumofiles/test.tcl";
     
     CommandLine cmd;
-    cmd.AddValue("testCase", "", testCase);
+    cmd.AddValue("testCase", "通过指定testCase对main函数进行个性化修改", testCase);
     cmd.AddValue("tclFilePath", "要加载的tcl文件位置", tclFilePath);
     cmd.Parse (argc, argv);
     
