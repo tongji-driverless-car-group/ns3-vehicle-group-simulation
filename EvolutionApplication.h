@@ -42,6 +42,9 @@ public:
     
     //判断自己是否是leader
     bool isLeader();
+
+    // 获取自己的mac地址，debug用
+    Address GetAddress();
         
     //向整个车群节点广播
     void BroadcastInformation(Ptr<Packet> packet);

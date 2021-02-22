@@ -54,6 +54,11 @@ bool EvolutionApplication::isLeader(){
     return m_state & LEADER_STATE;
 }
 
+Address EvolutionApplication::GetAddress()
+{
+    return m_wifiDevice->GetAddress();
+}
+
 void EvolutionApplication::StartApplication()
 {
     Ptr<Node> n = GetNode ();
@@ -126,9 +131,11 @@ void EvolutionApplication::SendGroupInformation(Ptr<Packet> packet){
         NS_LOG_ERROR("只有Leader可以向子车群发送消息");
     }
 
-    for(std::map<Address,Address>::iterator iter = m_router.begin();
-        iter != m_router.end(); iter++){
-        SendInformation(packet, iter->first);
+    // 只向二级子节点发送消息
+    for(std::vector<NeighborInformation>::iterator iter = m_next.begin();
+        iter != m_next.end(); iter++){
+        // std::cout << GetAddress() << " 有这些子节点" << std::endl;
+        SendInformation(packet, iter->mac);
     }
 }
 
@@ -159,7 +166,10 @@ bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packe
         uint8_t type = tag.GetType();
         bool isGroup = type & GROUP_MESSAGE;
         type &= ~(GROUP_MESSAGE);
-        std::cout << (int)tag.GetType() << " isGroup: " << isGroup << ", " << type << std::endl;
+
+        // ReceivePacket要求packet参数指向一个const，但是我们其它的SendInformation类的函数不要求const，所以复制一个
+        Ptr<Packet> copy_packet = new Packet(*packet);
+        // std::cout << (int)tag.GetType() << " isGroup: " << isGroup << ", " << type << std::endl;
         
         Vector apos;
         switch(type){
@@ -172,16 +182,16 @@ bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packe
                 // 如果是leader接到，则发给它的子节点避障命令
                 // 如果是普通节点，则执行避障命令
                 if (isLeader()) {
-                    // todo SendGroupInformation(packet, addr);
-                    std::cout << "Leader向子节点下达避障命令" << std::endl;
+                    SendGroupInformation(copy_packet);
+                    std::cout << "Leader " << GetAddress() << " 向子节点下达避障命令，自己也避障" << std::endl;
                 } else {
                     // 模拟执行避障动作
-                    std::cout << "正在避障" << std::endl;
+                    std::cout << GetAddress() << " 正在避障" << std::endl;
                 }
                 break;
-            case AVOID_MESSAGE:
-                std::cout << "avoid" << std::endl;
-                break;
+            // case AVOID_MESSAGE:
+            //     std::cout << GetAddress() << " is avoiding obstacle" << std::endl;
+            //     break;
             case MISSING_MESSAGE:
                 // 如果是leader，switchLeader
                 // 如果是普通节点，则向其leader发送查找节点命令
@@ -198,17 +208,16 @@ bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packe
                     std::cout << "正在搜寻节点" << std::endl;
                 }
             default:
-                std::cout << "unknown message type" << std::endl;
+                NS_LOG_ERROR("unknown message type");
                 break;
         }
         
         // 如果是组播 还需要继续转发消息，目前只有一个车群的组播，子节点的信息都在router里
         if (isGroup) {
-            Ptr<Packet> new_packet = new Packet(*packet);
-            // todo test
             for (std::map<Address,Address>::iterator iter = m_router.begin();
                 iter != m_router.end(); iter++) {
-                SendInformation(new_packet, iter->first);
+                SendInformation(copy_packet, iter->first);
+                std::cout << GetAddress() << " 向 " << iter->second << "发送消息" << std::endl;
             }
         }
         
@@ -265,23 +274,26 @@ bool EvolutionApplication::CheckObstacle()
 
     // 遇到障碍，如果是leader，通知子车群和其它车群leader避障；如果是普通子节点，通知leader
     if (isLeader()) {
+        // 通知其它车群避障
+        std::cout << "Leader " << GetAddress() << " 检测到障碍，通知其子节点和其它车群Leader避障" << std::endl;
         tag.SetDesAddr(Mac48Address::GetBroadcast());
         packet->AddPacketTag(tag);
         std::vector<NeighborInformation>::iterator it;
         for(it = m_neighbor_leaders.begin(); it != m_neighbor_leaders.end(); it++) {
-            std::cout << "hello1" << std::endl;
+            // std::cout << "hello1" << std::endl;
             SendToLeader(packet, it->mac);
         }
 
         // 通知子车群避障
         Ptr<Packet> packetForSon = Create<Packet>(buffer, payloadSize);
-        tag.SetType(AVOID_MESSAGE | GROUP_MESSAGE); // 组播
+        tag.SetType(OBSTACLE_MESSAGE | GROUP_MESSAGE); // 组播
         packetForSon->AddPacketTag(tag);
         SendGroupInformation(packetForSon);
+        // std::cout << "==========================" << std::endl;
     } else {
         tag.SetDesAddr(Mac48Address::GetBroadcast());
         packet->AddPacketTag(tag);
-        std::cout << "hello2" << std::endl;
+        // std::cout << "hello2" << std::endl;
         // PrintRouter();
         SendToLeader(packet);
     }

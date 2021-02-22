@@ -115,27 +115,35 @@ void TestGroupInitialer(){
 }
 
 void TestAvoidObstable() {
-    uint32_t nNodes = 4;//节点数目
-    double simTime = 28; //仿真时间
+    uint32_t nNodes = 6;//节点数目
+    double simTime = 1.2; //仿真时间
 
     NodeContainer nodes;
     nodes.Create(nNodes);
   
     LogComponentEnable ("EvolutionApplication", LOG_LEVEL_FUNCTION);
     
-   //使用NS3的移动模型，可以修改为SUMO的FCD输出
-    Ns2MobilityHelper mobility("/home/lk/Documents/workspace/avoidObstacle/mobility.tcl");
-    mobility.Install(nodes.Begin(),nodes.End());
+    //使用NS3的移动模型，可以修改为SUMO的FCD输出
+    // 基点是waf所在目录
+    Ns2MobilityHelper mobility("./scratch/ns3-vehicle-group-simulation/avoidObstacle/mobility.tcl");
+    mobility.Install(nodes.Begin(), nodes.End());
 
     VGTreeHelper vh;
     GroupInitializer gi;
     
-    // group1
-    vh.AddLeader(1);
-    vh.AddSubNodesFor(vector<int>({0, 2, 3}), 1);
+    // group1, avoidObstacle.rou.xml上的黄色车群
+    vh.AddLeader(2);
+    vh.AddSubNodesFor(vector<int>({4}), 2);
+    vh.AddSubNodesFor(vector<int>({0}), 4);
     gi.AddGroup(vh.GetTree());
     
+    // group2, avoidObstacle.rou.xml上的蓝色车群
+    vh.AddLeader(5);
+    vh.AddSubNodesFor(vector<int>({1, 3}), 5);
+    gi.AddGroup(vh.GetTree());
+
     //add link between groups
+    gi.AddLink(2, 5);
     
     gi.PrintGroupStructures();
     
@@ -149,7 +157,7 @@ void TestAvoidObstable() {
 //    wifiPhy.Set ("TxPowerStart", DoubleValue (20) );
 //    wifiPhy.Set ("TxPowerEnd", DoubleValue (40) );
 
-  // ns-3 supports generate a pcap trace
+    // ns-3 supports generate a pcap trace
     wifiPhy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11);
     NqosWaveMacHelper wifi80211pMac = NqosWaveMacHelper::Default ();
     Wifi80211pHelper wifi80211p = Wifi80211pHelper::Default ();
