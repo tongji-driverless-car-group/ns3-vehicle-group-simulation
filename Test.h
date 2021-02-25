@@ -4,5 +4,5 @@
 void TestGroupInitialer();
 void TestVGTreeHelper();
 void TestAvoidObstable();
-
+void TestConstructGroup();
 #endif

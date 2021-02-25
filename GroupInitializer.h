@@ -11,7 +11,7 @@ class GroupInitializer{
 private:
     vector<VGTree*> groups;
     map<int,set<int> >graph;
-    void ConstructVehicleGroup(VGTree* root, VGTree* t,VGTree* parent, NodeContainer& nodes);
+    void ConstructVehicleGroup(VGTree* root, VGTree* t,VGTree* parent, NodeContainer& nodes, uint32_t task_id, uint8_t level);
     void ConstructLinkBetweenGroups(NodeContainer& nodes);
     bool isLeader(int id);
 public:

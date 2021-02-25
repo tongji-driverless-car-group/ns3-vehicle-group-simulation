@@ -1,22 +1,23 @@
 #include "ns3/log.h"
 #include "GroupInitializer.h"
 
-void GroupInitializer::ConstructVehicleGroup(VGTree* root, VGTree* t,VGTree* parent, NodeContainer& nodes){
+void GroupInitializer::ConstructVehicleGroup(VGTree* root, VGTree* t,VGTree* parent, NodeContainer& nodes, uint32_t task_id, uint8_t level){
     if(!t){
         return;
     }
     
     for(int8_t i=0;i<t->c_num;i++){
-        ConstructVehicleGroup(root, t->child[i], t, nodes);
+        ConstructVehicleGroup(root, t->child[i], t, nodes,task_id,level+1);
     }
     
     Ptr<Node> node = nodes.Get(t->node_id);
     Ptr<EvolutionApplication> node_app = DynamicCast<EvolutionApplication>(node->GetApplication(0));
     NeighborInformation leader_info;
-
+    node_app->m_level = level;
+    //分配任务编号
+    node_app->m_task_id = task_id;
     if(t==root){
         node_app->m_state = LEADER_STATE;
-        
     }
     else{
         node_app->m_state = MEMBER_STATE;
@@ -120,8 +121,9 @@ void GroupInitializer::AddLink(int a, int b){
 }
 
 void GroupInitializer::Construct(NodeContainer& nodes){
+    uint32_t task_id = 0;
     for(vector<VGTree*>::iterator iter=groups.begin();iter!=groups.end();iter++){
-        ConstructVehicleGroup(*iter,*iter,NULL,nodes);
+        ConstructVehicleGroup(*iter,*iter,NULL,nodes,task_id++,1);
     }
     ConstructLinkBetweenGroups(nodes);
 }

@@ -28,12 +28,21 @@ TypeId EvolutionApplication::GetInstanceTypeId() const
 
 EvolutionApplication::EvolutionApplication()
 {
+    m_max_level = MAX_LEVEL;
+    m_max_subnodes = MAX_SUBNODES;
     m_hello_interval = Seconds(HELLO_INTERVAL);
     m_check_missing_interval = Seconds(CHECK_MISSING_INTERVAL);
     m_time_limit = Seconds (TIME_LIMIT);
     m_mode = WifiMode(WIFI_MODE);
+    m_state = INITIAL_STATE;
+    m_wait_construct_time = Seconds(WAIT_CONSTRUCT_TIME);
+    m_construct_interval = Seconds(CONSTRUCT_INTERVAL);
 
     // 各个参数的默认值，默认关闭，具体设置在Test.cc每一个testCase的函数里
+    
+    //
+    m_debug_hello = false;
+    m_debug_construct = false;
     
     // ---------- 避障相关 -------------
     m_is_simulate_avoid_obstacle = false;
@@ -54,9 +63,19 @@ bool EvolutionApplication::isLeader(){
     return m_state & LEADER_STATE;
 }
 
+bool EvolutionApplication::isMember(){
+    return m_state & MEMBER_STATE;
+}
+
 Address EvolutionApplication::GetAddress()
 {
     return m_wifiDevice->GetAddress();
+}
+
+
+Vector EvolutionApplication::GetLocation()
+{
+    return GetNode()->GetObject<MobilityModel>()->GetPosition();
 }
 
 void EvolutionApplication::StartApplication()
@@ -80,7 +99,7 @@ void EvolutionApplication::StartApplication()
         Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable> ();
         Time random_offset = MicroSeconds (rand->GetValue(50,200));
         //每m_hello_interval秒发送心跳包
-        // Simulator::Schedule (m_hello_interval+random_offset, &EvolutionApplication::SendHello, this);
+        Simulator::Schedule (m_hello_interval+random_offset, &EvolutionApplication::SendHello, this);
     }
     else
     {
@@ -95,17 +114,6 @@ void EvolutionApplication::StartApplication()
     }
 }
 
-void EvolutionApplication::TBroadcastInformation()
-{
-    Ptr<Packet> packet = Create <Packet> (100);
-    
-    //将数据包以 WSMP (0x88dc)格式广播出去
-    m_wifiDevice->Send (packet, Mac48Address::GetBroadcast(), 0x88dc);
-
-    //每m_broadcast_time广播一次
-    Simulator::Schedule (m_hello_interval, &EvolutionApplication::TBroadcastInformation, this);
-}
-
 void EvolutionApplication::BroadcastInformation(Ptr<Packet> packet)
 {
     //将数据包以 WSMP (0x88dc)格式广播出去
@@ -114,6 +122,7 @@ void EvolutionApplication::BroadcastInformation(Ptr<Packet> packet)
 }
 
 void EvolutionApplication::SendInformation(Ptr<Packet> packet, Address addr){
+    
     // std::cout << m_router[addr] << std::endl;
     Address dest_addr; // 目的地址
     if (addr == m_leader.mac) {
@@ -121,6 +130,10 @@ void EvolutionApplication::SendInformation(Ptr<Packet> packet, Address addr){
     } else if (addr == m_parent.mac) {
         dest_addr = m_parent.mac;
     } else {
+	    //router不存在则丢弃
+	    if(m_router.find(addr)!=m_router.end()){
+            return;
+        }
         dest_addr = m_router[addr];
     }
     m_wifiDevice->Send (packet, dest_addr, 0x88dc);
@@ -154,6 +167,31 @@ void EvolutionApplication::SendToLeader(Ptr<Packet> packet, Address addr){
     SendInformation(packet, addr);
 }
 
+void EvolutionApplication::ConvertFromWaitConstructToLeader(){
+    //若过了一段时间还是WAIT_CONSTRUCT_STATE则主动成为leader
+    if(m_state == WAIT_CONSTRUCT_STATE){
+        m_state = LEADER_STATE;
+        m_level = 1;
+        m_leader.mac = GetAddress();
+        m_leader.pos = GetLocation();
+        m_leader.last_beacon = Now();
+        SendConstructMessage();
+    }
+    else if(m_state == WAIT_CONSTRUCT_CONFIRM_STATE){//如果在等待确认阶段则过一段时间再看
+        Simulator::Schedule(m_wait_construct_time, &EvolutionApplication::ConvertFromWaitConstructToLeader, this);
+    }
+}
+
+void EvolutionApplication::AssignTask(uint32_t task_id){
+    m_state = WAIT_CONSTRUCT_STATE;
+    m_task_id = task_id;
+    Simulator::Schedule(m_wait_construct_time, &EvolutionApplication::ConvertFromWaitConstructToLeader, this);
+}
+
+void EvolutionApplication::AssignTaskAtTime(uint32_t task_id, Time t){
+    Simulator::Schedule(t, &EvolutionApplication::AssignTask, this, task_id);
+}
+
 bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packet> packet,uint16_t protocol, const Address &sender)
 {   
     MessageHeader tag;
@@ -171,12 +209,29 @@ bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packe
         Ptr<Packet> copy_packet = new Packet(*packet);
         // std::cout << (int)tag.GetType() << " isGroup: " << isGroup << ", " << type << std::endl;
         
-        Vector apos;
         switch(type){
             case HELLO:
-                memcpy(&apos, buffer, sizeof(apos));
+                HandleHelloMessage(buffer, sender, tag.GetTimestamp());
                 break;
             case HELLO_R:
+                HandleHelloRMessage(buffer, sender, tag.GetTimestamp());
+                break;
+            case CONSTRUCT_MESSAGE:
+                if(m_debug_construct){
+                    HandleConstructMessage(buffer, sender);
+                }
+                break;
+            case CONSTRUCT_REPLY_MESSAGE:
+                if(m_debug_construct){
+                    cout<<Now()<<" "<<GetAddress()<<" receive construct reply message from "<<sender<<endl;
+                }
+                HandleConstructReplyMessage(buffer, sender, tag.GetTimestamp());
+                break;
+            case CONSTRUCT_CONFIRM_MESSAGE:
+                if(m_debug_construct){
+                    cout<<Now()<<" "<<GetAddress()<<" receive construct confirm message from "<<sender<<endl;
+                }
+                HandleConstructConfirmMessage(buffer);
                 break;
             case OBSTACLE_MESSAGE:
                 // 如果是leader接到，则发给它的子节点避障命令
@@ -320,31 +375,241 @@ void EvolutionApplication::PrintRouter() {
     std::cout << "======= end print router =======" << std::endl;
 }
 
-void EvolutionApplication::SendHello (){
-    //心跳包载荷
-    Vector pos = GetNode()->GetObject<MobilityModel>()->GetPosition();//取得节点位置
-    int payloadSize = sizeof(Vector);
-    uint8_t * buffer = new uint8_t[payloadSize];
-    uint16_t index = 0;
+void EvolutionApplication::SendHello(){
+    //如果是leader，则不用发送心跳包
+    if(!isMember()){
+        return ;
+    }
     
-    memcpy(buffer+index, &pos, sizeof(pos));
-    index += sizeof(pos);
+    //心跳包载荷
+    HelloInformation hi;
+    hi.pos = GetLocation();
+    Ptr<Packet> packet = Create <Packet> ((uint8_t*)&hi, sizeof(hi));
+    
+    //心跳包消息头 
+    MessageHeader tag;
+    tag.SetType(HELLO);
+    tag.SetTimestamp(Now());
+    tag.SetPayloadSize(sizeof(hi));
+    tag.SetDesAddr(m_parent.mac);
+    tag.SetSrcAddr(m_wifiDevice->GetAddress());
+    packet->AddPacketTag (tag);
+    
+    //广播心跳包
+    SendInformation(packet,m_parent.mac);
+    Simulator::Schedule (m_hello_interval, &EvolutionApplication::SendHello, this);
+    
+}
+
+void EvolutionApplication::HandleHelloMessage(uint8_t *buffer, const Address &sender, Time timestamp){
+    bool find = false;//是否在m_next中找到sender
+    //更新m_next的节点信息
+    HelloInformation* hi = (HelloInformation*)buffer;
+    for(vector<NeighborInformation>::iterator iter=m_next.begin();iter!=m_next.end();iter++){
+        if(iter->mac == sender){
+            iter->last_beacon = timestamp;
+            iter->pos = hi->pos;
+            find = true;
+            break;
+        }
+    }
+    if(!find){
+        NS_FATAL_ERROR ("收到非子结点的HELLOMessage");
+        return ;
+    }
+    
+    SendHelloR(sender);
+}
+
+void EvolutionApplication::SendHelloR(const Address &addr){
+    //TODO 计算节点引领度
+    
+    
+    //构造载荷
+    int payloadSize = 0;
+    uint8_t * buffer = new uint8_t[payloadSize];
+    //uint16_t index = 0;
     
     Ptr<Packet> packet = Create <Packet> (buffer,payloadSize);
     
     delete buffer;
     
-    //心跳包消息头
+    //心跳回复包消息头 
     MessageHeader tag;
-    tag.SetType(HELLO);
+    tag.SetType(HELLO_R);
     tag.SetTimestamp(Now());
     tag.SetPayloadSize(payloadSize);
+    tag.SetDesAddr(addr);
+    tag.SetSrcAddr(m_wifiDevice->GetAddress());
+    packet->AddPacketTag (tag);
+    
+    SendInformation(packet, addr);
+}
+
+void EvolutionApplication::HandleHelloRMessage(uint8_t *buffer, const Address &sender, Time timestamp){
+    if(sender!=m_parent.mac){
+        NS_FATAL_ERROR ("收到非父结点的HELLORMessage");
+        return ;
+    }
+    //TODO 更新节点引领度
+    
+    //更新parent信息
+    m_parent.last_beacon = timestamp;
+}
+
+void EvolutionApplication::SendConstructMessage(){
+    //如果自己没有车群，则不发送建立消息
+    if(!isLeader() && !isMember()){
+        if(m_debug_construct){
+            cout<<Now()<<" "<<GetAddress()<<" stop broadcast construct message for isnt leader or member"<<endl;
+        }
+        return;
+    }
+    
+    //如果子结点达到最大子结点数的2/3，就不再广播建立消息
+    if(3*m_next.size()>=2*m_max_subnodes){
+        if(m_debug_construct){
+            cout<<Now()<<" "<<GetAddress()<<" stop broadcast construct message for too many subnodes "<<endl;
+        }
+        return ;
+    }
+    
+    //建立消息载荷
+    ConstructInformation ci;
+    uint8_t* buffer = new uint8_t[sizeof(ci)];
+    ci.pos = GetNode()->GetObject<MobilityModel>()->GetPosition();//取得节点位置
+    ci.task_id = m_task_id;
+    memcpy(buffer, &ci, sizeof(ci));
+    
+    Ptr<Packet> packet = Create <Packet> (buffer,sizeof(ci));
+    
+    delete buffer;
+    
+    //建立消息消息头 
+    MessageHeader tag;
+    tag.SetType(CONSTRUCT_MESSAGE);
+    tag.SetTimestamp(Now());
+    tag.SetPayloadSize(sizeof(ci));
     tag.SetDesAddr(Mac48Address::GetBroadcast());
     tag.SetSrcAddr(m_wifiDevice->GetAddress());
     packet->AddPacketTag (tag);
     
-    //广播心跳包
+    //广播建立消息
+    if(m_debug_construct){
+        cout<<Now()<<" "<<GetAddress()<<" broadcast construct message"<<endl;
+    }
     BroadcastInformation(packet);
-    Simulator::Schedule (m_hello_interval, &EvolutionApplication::SendHello, this);
+    
+    Simulator::Schedule (m_construct_interval, &EvolutionApplication::SendConstructMessage, this);
+    
+}
+
+void EvolutionApplication::HandleConstructMessage(uint8_t *buffer, const Address &sender){
+    //只有处于等待建立状态才接收建立消息
+    if(m_state!=WAIT_CONSTRUCT_STATE){
+        return ;
+    }
+    
+    ConstructInformation ci;
+    memcpy(&ci, buffer, sizeof(ci));
+    
+    //和发送建立消息的车任务不同，则忽视其他的建立消息
+    if(ci.task_id != m_task_id){
+            return ;
+    }
+    //回复建立消息
+    SendConstructReplyMessage(sender);
+    m_state = WAIT_CONSTRUCT_CONFIRM_STATE;
+}
+
+void EvolutionApplication::SendConstructReplyMessage(const Address &addr){
+    if(m_debug_construct){
+        cout<<Now()<<" "<<GetAddress()<<" send construct reply message to "<<addr<<endl;
+    }
+    //建立回复消息载荷
+    ConstructReplyInformation cri;
+    uint8_t* buffer = new uint8_t[sizeof(cri)];
+    cri.pos = GetNode()->GetObject<MobilityModel>()->GetPosition();//取得节点位置
+    memcpy(&cri, buffer, sizeof(cri));
+    Ptr<Packet> packet = Create <Packet> (buffer,sizeof(cri));
+    delete buffer;
+    
+    //建立回复消息消息头 
+    MessageHeader tag;
+    tag.SetType(CONSTRUCT_REPLY_MESSAGE);
+    tag.SetTimestamp(Now());
+    tag.SetPayloadSize(sizeof(cri));
+    tag.SetDesAddr(addr);
+    tag.SetSrcAddr(m_wifiDevice->GetAddress());
+    packet->AddPacketTag (tag);
+    
+    m_wifiDevice->Send (packet, addr, 0x88dc);
+}
+
+void EvolutionApplication::HandleConstructReplyMessage(uint8_t* buffer, const Address &sender, Time timestamp){
+    ConstructReplyInformation cri;
+    memcpy(&cri, buffer, sizeof(cri));
+       
+    //建立确认消息载荷
+    ConstructConfirmInformation cci;
+    if(3*m_next.size()<2*m_max_subnodes){
+        cci.accept = 1;
+        cci.level = m_level + 1;
+        cci.leader = m_leader;
+        cci.parent.mac = GetAddress();
+        cci.parent.last_beacon = Now();
+        m_router[sender] = sender;
+        //添加子节点信息
+        NeighborInformation ni;
+        ni.mac = sender;
+        ni.last_beacon = timestamp;
+        ni.pos = cri.pos;
+        m_next.push_back(ni);
+    }
+    else{
+        cci.accept = 0;
+    }
+    
+    SendConstructConfirmMessage(cci,sender);
+}
+
+void EvolutionApplication::SendConstructConfirmMessage(const ConstructConfirmInformation& cci, const Address &addr){
+    uint8_t* buffer = new uint8_t[sizeof(cci)];
+    memcpy(buffer, &cci, sizeof(cci));
+    Ptr<Packet> packet = Create <Packet> (buffer,sizeof(cci));
+    delete buffer;
+    
+    //建立确认消息消息头 
+    MessageHeader tag;
+    tag.SetType(CONSTRUCT_CONFIRM_MESSAGE);
+    tag.SetTimestamp(Now());
+    tag.SetPayloadSize(sizeof(cci));
+    tag.SetDesAddr(addr);
+    tag.SetSrcAddr(m_wifiDevice->GetAddress());
+    packet->AddPacketTag (tag);
+    if(m_debug_construct){
+        cout<<Now()<<" "<<GetAddress()<<" send construct confirm message to "<<addr<<endl;
+    }
+    m_wifiDevice->Send (packet, addr, 0x88dc);
+}
+
+void EvolutionApplication::HandleConstructConfirmMessage(uint8_t* buffer){
+    ConstructConfirmInformation* cci = (ConstructConfirmInformation*)buffer;
+    if(cci->accept == 1){
+        m_state = MEMBER_STATE;
+        m_parent = cci->parent;
+        m_leader = cci->leader;
+        m_level = cci->level;
+        SendConstructMessage();
+        if(m_debug_construct){
+            cout<<Now()<<" "<<GetAddress()<<" get constructed level= "<<(int)m_level<<" parent= "<<m_parent.mac<<" leader= "<<m_leader.mac<<endl;
+        }
+    }
+    else{
+        m_state = WAIT_CONSTRUCT_STATE;
+        if(m_debug_construct){
+            cout<<Now()<<" "<<GetAddress()<<" get rejected "<<endl;
+        }
+    }
 }
 
