@@ -96,10 +96,10 @@ void EvolutionApplication::StartApplication()
     }
     if (m_wifiDevice)
     {
-        Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable> ();
-        Time random_offset = MicroSeconds (rand->GetValue(50,200));
+        //Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable> ();
+        //Time random_offset = MicroSeconds (rand->GetValue(50,200));
         //每m_hello_interval秒发送心跳包
-        Simulator::Schedule (m_hello_interval+random_offset, &EvolutionApplication::SendHello, this);
+        //Simulator::Schedule (m_hello_interval+random_offset, &EvolutionApplication::SendHello, this);
     }
     else
     {
@@ -476,14 +476,10 @@ void EvolutionApplication::SendConstructMessage(){
     
     //建立消息载荷
     ConstructInformation ci;
-    uint8_t* buffer = new uint8_t[sizeof(ci)];
     ci.pos = GetNode()->GetObject<MobilityModel>()->GetPosition();//取得节点位置
     ci.task_id = m_task_id;
-    memcpy(buffer, &ci, sizeof(ci));
     
-    Ptr<Packet> packet = Create <Packet> (buffer,sizeof(ci));
-    
-    delete buffer;
+    Ptr<Packet> packet = Create <Packet> ((uint8_t*)&ci,sizeof(ci));
     
     //建立消息消息头 
     MessageHeader tag;
@@ -500,6 +496,8 @@ void EvolutionApplication::SendConstructMessage(){
     }
     BroadcastInformation(packet);
     
+    Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable> ();
+    Time random_offset = Seconds (rand->GetValue(0,m_construct_interval.GetSeconds()/4));
     Simulator::Schedule (m_construct_interval, &EvolutionApplication::SendConstructMessage, this);
     
 }
@@ -510,11 +508,11 @@ void EvolutionApplication::HandleConstructMessage(uint8_t *buffer, const Address
         return ;
     }
     
-    ConstructInformation ci;
-    memcpy(&ci, buffer, sizeof(ci));
+    ConstructInformation* ci = (ConstructInformation*)buffer;
+    
     
     //和发送建立消息的车任务不同，则忽视其他的建立消息
-    if(ci.task_id != m_task_id){
+    if(ci->task_id != m_task_id){
             return ;
     }
     //回复建立消息
@@ -528,11 +526,8 @@ void EvolutionApplication::SendConstructReplyMessage(const Address &addr){
     }
     //建立回复消息载荷
     ConstructReplyInformation cri;
-    uint8_t* buffer = new uint8_t[sizeof(cri)];
     cri.pos = GetNode()->GetObject<MobilityModel>()->GetPosition();//取得节点位置
-    memcpy(&cri, buffer, sizeof(cri));
-    Ptr<Packet> packet = Create <Packet> (buffer,sizeof(cri));
-    delete buffer;
+    Ptr<Packet> packet = Create <Packet> ((uint8_t*)&cri,sizeof(cri));
     
     //建立回复消息消息头 
     MessageHeader tag;
@@ -547,8 +542,7 @@ void EvolutionApplication::SendConstructReplyMessage(const Address &addr){
 }
 
 void EvolutionApplication::HandleConstructReplyMessage(uint8_t* buffer, const Address &sender, Time timestamp){
-    ConstructReplyInformation cri;
-    memcpy(&cri, buffer, sizeof(cri));
+    ConstructReplyInformation* cri = (ConstructReplyInformation*)buffer;       
        
     //建立确认消息载荷
     ConstructConfirmInformation cci;
@@ -563,7 +557,7 @@ void EvolutionApplication::HandleConstructReplyMessage(uint8_t* buffer, const Ad
         NeighborInformation ni;
         ni.mac = sender;
         ni.last_beacon = timestamp;
-        ni.pos = cri.pos;
+        ni.pos = cri->pos;
         m_next.push_back(ni);
     }
     else{
@@ -574,10 +568,7 @@ void EvolutionApplication::HandleConstructReplyMessage(uint8_t* buffer, const Ad
 }
 
 void EvolutionApplication::SendConstructConfirmMessage(const ConstructConfirmInformation& cci, const Address &addr){
-    uint8_t* buffer = new uint8_t[sizeof(cci)];
-    memcpy(buffer, &cci, sizeof(cci));
-    Ptr<Packet> packet = Create <Packet> (buffer,sizeof(cci));
-    delete buffer;
+    Ptr<Packet> packet = Create <Packet> ((uint8_t*)&cci,sizeof(cci));
     
     //建立确认消息消息头 
     MessageHeader tag;

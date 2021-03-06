@@ -124,20 +124,20 @@ void TestConstructGroup(){
     
     //使用NS3的移动模型，可以修改为SUMO的FCD输出
     // 基点是waf所在目录
-//    Ns2MobilityHelper mobility("./scratch/ns3-vehicle-group-simulation/sumofiles/vehicleGroupInitial.tcl");
-//    mobility.Install(nodes.Begin(), nodes.End());
-    MobilityHelper mobility;
-    Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-    positionAlloc->Add (Vector (0, 0, 0));
-    positionAlloc->Add (Vector (0, 0, 1));
-    positionAlloc->Add (Vector (0, 0, 2));
-    positionAlloc->Add (Vector (0, 1, 3));
-    positionAlloc->Add (Vector (0, 0, 4));
-    positionAlloc->Add (Vector (0, 1, 5));
-    positionAlloc->Add (Vector (0, 0, 6));
-    mobility.SetPositionAllocator (positionAlloc);
-    mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-    mobility.Install (nodes);
+    Ns2MobilityHelper mobility("./scratch/ns3-vehicle-group-simulation/sumofiles/vehicleGroupConstruct/vehicleGroupConstruct.tcl");
+    mobility.Install(nodes.Begin(), nodes.End());
+//    MobilityHelper mobility;
+//    Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
+//    positionAlloc->Add (Vector (0, 0, 0));
+//    positionAlloc->Add (Vector (0, 0, 1));
+//    positionAlloc->Add (Vector (0, 0, 2));
+//    positionAlloc->Add (Vector (0, 1, 3));
+//    positionAlloc->Add (Vector (0, 0, 4));
+//    positionAlloc->Add (Vector (0, 1, 5));
+//    positionAlloc->Add (Vector (0, 0, 6));
+//    mobility.SetPositionAllocator (positionAlloc);
+//    mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+//    mobility.Install (nodes);
     
     // The below set of helpers will help us to put together the wifi NICs we want
     YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
