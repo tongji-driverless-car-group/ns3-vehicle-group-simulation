@@ -42,6 +42,12 @@ typedef struct{
     
 }ConstructConfirmInformation;
 
+typedef struct{
+    NeighborInformation leader; // 失联节点的leader，便于其它节点查找
+    Vector pos; // 上一次心跳的位置 目前没什么用 但可以方便查找
+    Time last_beacon; // 失联时间
+}SearchInformation;
+
 typedef uint16_t NodeState;
 
 const double HELLO_INTERVAL = 0.5; //心跳包发送间隔 单位s
@@ -102,6 +108,9 @@ public:
     
     //向其他车群的leader发送消息
     void SendToLeader(Ptr<Packet> packet, Address addr);
+
+    //向其它所有车群的leader发送消息
+    void SendToAllOtherLeaders(Ptr<Packet> packet);
     
     //收到数据包后的回调
     bool ReceivePacket (Ptr<NetDevice> device,Ptr<const Packet> packet,uint16_t protocol, const Address &sender);
@@ -160,6 +169,15 @@ public:
     // 查看是否有节点失联
     bool CheckMissing();
 
+    // 检查是否在搜索状态
+    bool IsSearching();
+
+    // 人为设定一个时间点，令某节点故障 / 失联
+    bool IsMissing();
+
+    // 处理MISSING_MESSAGE
+    void HandleMissingMessage(uint8_t *buffer);
+
     // for debug
     void PrintRouter();
 private:
@@ -202,7 +220,14 @@ public:
 
     // ------------ 节点失联相关 -------------
     bool m_is_simulate_node_missing; // 是否仿真节点失联
+    bool m_has_missing_son; // 有丢失的子节点，类似于记录状态，避免重复报告失联
+    Time m_max_hello_interval; // 超过该时间长度认为失联
+    Time m_confirm_missing_interval; // 搜索失败，leader向上汇报节点失联
+    Time m_missing_time; // 失联时间
+    bool m_is_missing; // 是否是失联的内部节点
 
+    bool m_is_found; // 是找到失联节点的节点
+    Time m_found_time; // 找到失联节点的时间
 };
 
 #endif

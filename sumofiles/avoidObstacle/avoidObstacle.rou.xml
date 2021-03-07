@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2021年02月22日 星期一 12时31分05秒 by Eclipse SUMO netedit Version 1.8.0
+<!-- generated on 2021年03月07日 星期日 16时23分16秒 by Eclipse SUMO netedit Version 1.8.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <input>
-        <sumo-net-file value="/home/lk/Documents/workspace/avoidObstacle/avoidObstacle.net.xml"/>
+        <sumo-net-file value="/home/lk/Documents/workspace/scratch/ns3-vehicle-group-simulation/sumofiles/avoidObstacle/avoidObstacle.net.xml"/>
     </input>
 
     <output>
-        <output-file value="/home/lk/Documents/workspace/avoidObstacle/avoidObstacle.net.xml"/>
+        <output-file value="/home/lk/Documents/workspace/scratch/ns3-vehicle-group-simulation/sumofiles/avoidObstacle/avoidObstacle.net.xml"/>
     </output>
 
     <processing>
@@ -30,7 +30,7 @@
     </pedestrian>
 
     <netedit>
-        <route-files value="/home/lk/Documents/workspace/avoidObstacle/avoidObstacle.rou.xml"/>
+        <route-files value="/home/lk/Documents/workspace/scratch/ns3-vehicle-group-simulation/sumofiles/avoidObstacle/avoidObstacle.rou.xml"/>
     </netedit>
 
     <report>

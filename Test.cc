@@ -221,7 +221,12 @@ void TestConstructGroup(){
 
 void TestAvoidObstable(bool isInnerObstacle) {
     uint32_t nNodes = 6;//节点数目
-    double simTime = 1.2; //仿真时间
+    double simTime = 0;
+    if (isInnerObstacle) {
+        simTime = 10;
+    } else {
+        simTime = 1.2; //仿真时间
+    }
 
     NodeContainer nodes;
     nodes.Create(nNodes);
@@ -277,15 +282,26 @@ void TestAvoidObstable(bool isInnerObstacle) {
     {
         Ptr<EvolutionApplication> app_i = CreateObject<EvolutionApplication>();
         // ======================= application 的一些参数的初始化 begin =============================
-        // 默认值见EvolutionApplication的构造函数
-        app_i->SetStartTime (Seconds (0));
-        app_i->SetStopTime (Seconds (simTime));
-
+        
         // ---------- 避障相关 -------------
-        app_i->m_is_simulate_avoid_outer_obstacle = true;
-        app_i->m_check_obstacle_interval = Seconds(1);
-        app_i->m_obstacle = Vector(60, -4.8, 0);
-        app_i->m_safe_avoid_obstacle_distance = 21;
+        if (isInnerObstacle) {
+            // 默认值见EvolutionApplication的构造函数
+            app_i->SetStartTime (Seconds (0));
+            app_i->SetStopTime (Seconds(simTime));
+            if (i == 0) { // 特定车辆停止仿真，当作它是内部障碍
+                app_i->m_is_missing = true;
+            }
+            
+            app_i->m_is_simulate_node_missing = true;
+        } else {
+            // 默认值见EvolutionApplication的构造函数
+            app_i->SetStartTime (Seconds (0));
+            app_i->SetStopTime (Seconds (simTime));
+            app_i->m_is_simulate_avoid_outer_obstacle = true;
+            app_i->m_check_obstacle_interval = Seconds(1);
+            app_i->m_obstacle = Vector(60, -4.8, 0);
+            app_i->m_safe_avoid_obstacle_distance = 21;
+        }
 
         nodes.Get(i)->AddApplication (app_i);
         // ======================= application 的一些参数的初始化 end ===============================
