@@ -31,10 +31,13 @@ int main (int argc, char *argv[])
     cout<<"tclFilePath: "<< tclFilePath <<endl;
     cout<<endl;
     
-    if (testCase == "avoidObstacle") {
-        TestAvoidObstable();
-    } else if(testCase == "constructGroup"){
+   
+    if(testCase == "constructGroup"){
         TestConstructGroup();
+    } else if (testCase == "avoidInnerObstacle") {
+        TestAvoidObstable(true);
+    } else if (testCase == "avoidOuterObstacle") {
+        TestAvoidObstable(false);
     } else {
         TestGroupInitialer();
     }

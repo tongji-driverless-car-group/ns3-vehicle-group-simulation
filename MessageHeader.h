@@ -14,14 +14,15 @@ const uint8_t COMFIRM_MESSAGE = 4;
 const uint8_t ERROR_MESSAGE = 5; 
 const uint8_t RETURN_MESSAGE = 6; 
 const uint8_t RECEIVE_MESSAGE = 7; 
-const uint8_t MISSING_MESSAGE = 8; 
-const uint8_t SEARCH_MESSAGE = 9; 
+const uint8_t MISSING_MESSAGE = 8; // 向父节点报告子节点失联
+const uint8_t SEARCH_MESSAGE = 9; // leader向车群和其它车群发送查找失联节点请求
 const uint8_t TRANSFER_MESSAGE = 10; 
 const uint8_t OBSTACLE_MESSAGE = 11; 
 const uint8_t ADJUST_MESSAGE = 12; 
 const uint8_t AVOID_MESSAGE = 13;
 const uint8_t CONSTRUCT_REPLY_MESSAGE = 14;
 const uint8_t CONSTRUCT_CONFIRM_MESSAGE = 15;
+const uint8_t FOUND_MESSAGE = 16; // 成功查找到失联节点
 const uint8_t GROUP_MESSAGE = 0x80;
 
 namespace ns3

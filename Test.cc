@@ -219,7 +219,7 @@ void TestConstructGroup(){
     Simulator::Destroy();
 }
 
-void TestAvoidObstable() {
+void TestAvoidObstable(bool isInnerObstacle) {
     uint32_t nNodes = 6;//节点数目
     double simTime = 1.2; //仿真时间
 
@@ -282,7 +282,7 @@ void TestAvoidObstable() {
         app_i->SetStopTime (Seconds (simTime));
 
         // ---------- 避障相关 -------------
-        app_i->m_is_simulate_avoid_obstacle = true;
+        app_i->m_is_simulate_avoid_outer_obstacle = true;
         app_i->m_check_obstacle_interval = Seconds(1);
         app_i->m_obstacle = Vector(60, -4.8, 0);
         app_i->m_safe_avoid_obstacle_distance = 21;

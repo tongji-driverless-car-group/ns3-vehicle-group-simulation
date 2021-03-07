@@ -3,6 +3,7 @@
 
 void TestGroupInitialer();
 void TestVGTreeHelper();
-void TestAvoidObstable();
 void TestConstructGroup();
+void TestAvoidObstable(bool isInnerObstacle);
+
 #endif

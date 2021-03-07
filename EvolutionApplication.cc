@@ -45,7 +45,7 @@ EvolutionApplication::EvolutionApplication()
     m_debug_construct = false;
     
     // ---------- 避障相关 -------------
-    m_is_simulate_avoid_obstacle = false;
+    m_is_simulate_avoid_outer_obstacle = false;
     m_check_obstacle_interval = Seconds(1);
     m_obstacle = Vector(60, -4.8, 0);
     m_safe_avoid_obstacle_distance = 21;
@@ -109,7 +109,7 @@ void EvolutionApplication::StartApplication()
     Simulator::Schedule (Seconds (1), &EvolutionApplication::RemoveOldNeighbors, this);
     
     // 周期性检查周围是否有障碍物
-    if (m_is_simulate_avoid_obstacle) {
+    if (m_is_simulate_avoid_outer_obstacle) {
         Simulator::Schedule(m_check_obstacle_interval, &EvolutionApplication::CheckObstacle, this);
     }
 }
@@ -262,6 +262,10 @@ bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packe
                     // todo 如果sumo设计得好，后面真找到了，需要再写一个schedule用的定时搜寻
                     std::cout << "正在搜寻节点" << std::endl;
                 }
+            case FOUND_MESSAGE:
+                // 已经找到失联节点，但由于sumo的仿真能力，无法仿真之后的动作
+                std::cout << "已找到失联节点" << std::endl;
+                break;
             default:
                 NS_LOG_ERROR("unknown message type");
                 break;
@@ -358,6 +362,7 @@ bool EvolutionApplication::CheckObstacle()
 
 bool EvolutionApplication::CheckMissing()
 {
+    
     return false;
 }
 

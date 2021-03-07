@@ -195,7 +195,7 @@ public:
     bool m_debug_construct;
     
     // ------------ 避障相关 --------------
-    bool m_is_simulate_avoid_obstacle; // 是否仿真避障
+    bool m_is_simulate_avoid_outer_obstacle; // 是否仿真避障
     Vector m_obstacle; // 障碍物信息，单障碍物，初始化时设置
     int m_safe_avoid_obstacle_distance; // 单位：m, 与障碍物之间的安全距离，超过则发避障消息
     Time m_check_obstacle_interval; // 检查丢失节点的周期
