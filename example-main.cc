@@ -33,6 +33,8 @@ int main (int argc, char *argv[])
     
     if (testCase == "avoidObstacle") {
         TestAvoidObstable();
+    } else if(testCase == "constructGroup"){
+        TestConstructGroup();
     } else {
         TestGroupInitialer();
     }
