@@ -23,6 +23,10 @@ const uint8_t AVOID_MESSAGE = 13;
 const uint8_t CONSTRUCT_REPLY_MESSAGE = 14;
 const uint8_t CONSTRUCT_CONFIRM_MESSAGE = 15;
 const uint8_t FOUND_MESSAGE = 16; // 成功查找到失联节点
+const uint8_t CHECK_LEADER_MESSAGE = 17;
+const uint8_t CHECK_LEADER_REPLY_MESSAGE = 18;
+const uint8_t NEW_LEADER_MESSAGE = 19;
+const uint8_t NEW_LEADER_REPLY_MESSAGE = 20;
 const uint8_t GROUP_MESSAGE = 0x80;
 
 namespace ns3

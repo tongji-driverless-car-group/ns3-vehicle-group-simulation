@@ -6,6 +6,9 @@
 #include "ns3/vector.h"
 #include <vector>
 #include <map>
+// #include <thread>
+// #include <mutex>
+// #include <unistd.h>
 
 using namespace ns3;
 using namespace std;
@@ -47,6 +50,10 @@ typedef struct{
     Vector pos; // 上一次心跳的位置 目前没什么用 但可以方便查找
     Time last_beacon; // 失联时间
 }SearchInformation;
+
+// typedef struct {
+//     Address addr; 
+// } NewLeaderInformation;
 
 typedef uint16_t NodeState;
 
@@ -112,6 +119,9 @@ public:
     //向其它所有车群的leader发送消息
     void SendToAllOtherLeaders(Ptr<Packet> packet);
     
+    // 向兄弟节点发送消息
+    void SendToBrothers(Ptr<Packet> packet);
+
     //收到数据包后的回调
     bool ReceivePacket (Ptr<NetDevice> device,Ptr<const Packet> packet,uint16_t protocol, const Address &sender);
     
@@ -186,6 +196,20 @@ public:
     // 判断自己是否是二级节点
     bool IsSecondLevelNode();
 
+    // 处理CheckLeaderMessage
+    void HandleCheckLeaderMessage(const Address &addr);
+
+    // 处理CheckLeaderReplyMessage
+    void HandleCheckLeaderReplyMessage();
+
+    void HandleNewLeaderMessage(uint8_t *buffer);
+
+    // leader更替
+    void ChangeLeader();
+
+    // 更新leader后刷新车群
+    void UpdateGroupAfterChangeLeader(NeighborInformation *leader, bool isChangeLevel);
+
     // for debug
     void PrintRouter();
 
@@ -238,6 +262,12 @@ public:
 
     bool m_is_found; // 是找到失联节点的节点
     Time m_found_time; // 找到失联节点的时间
+    
+    // ------------ change leader相关 --------------
+    bool m_is_simulate_change_leader;
+    bool m_is_next_leader; // 是二级节点中引领度最高的节点
+    bool m_is_changing_leader;
+    // mutex m_is_changing_leader_lock;
 };
 
 #endif

@@ -334,7 +334,7 @@ void TestChangeLeader() {
     
     //使用NS3的移动模型，可以修改为SUMO的FCD输出
     // 基点是waf所在目录
-    Ns2MobilityHelper mobility("./scratch/ns3-vehicle-group-simulation/sumofiles/avoidObstacle/mobility.tcl");
+    Ns2MobilityHelper mobility("./scratch/ns3-vehicle-group-simulation/sumofiles/changeLeader/mobility.tcl");
     mobility.Install(nodes.Begin(), nodes.End());
 
     VGTreeHelper vh;
@@ -382,8 +382,11 @@ void TestChangeLeader() {
         if (i == 2) { // leader失联
             app_i->m_is_missing = true;
         }
+        if (i == 3) { // 新leader
+            app_i->m_is_next_leader = true; // 默认，谁是下一任leader是共识，也就是二级节点必有且只有一个该字段为true
+        }
         
-        app_i->m_is_simulate_node_missing = true;
+        app_i->m_is_simulate_change_leader = true;
         nodes.Get(i)->AddApplication (app_i);
         // ======================= application 的一些参数的初始化 end ===============================
         

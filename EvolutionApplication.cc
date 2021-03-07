@@ -57,6 +57,10 @@ EvolutionApplication::EvolutionApplication()
     m_confirm_missing_interval = Seconds(3 * HELLO_INTERVAL);
     m_is_missing = false;
     m_missing_time = Seconds(1.2 * HELLO_INTERVAL); 
+
+    // ---------- change leader相关 -----------
+    m_is_simulate_change_leader = false;
+    m_is_changing_leader = false;
 }
 
 EvolutionApplication::~EvolutionApplication()
@@ -101,12 +105,21 @@ void EvolutionApplication::StartApplication()
     }
     if (m_wifiDevice)
     {
-        if (m_is_simulate_node_missing) {
-            Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable> ();
-            Time random_offset = MicroSeconds (rand->GetValue(50,200));
-            // 每m_hello_interval秒发送心跳包
+        
+        Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable> ();
+        Time random_offset = MicroSeconds (rand->GetValue(50,200));
+        // 每m_hello_interval秒发送心跳包
+
+        if (m_is_simulate_node_missing || m_is_simulate_change_leader) {
             Simulator::Schedule (m_hello_interval+random_offset, &EvolutionApplication::SendHello, this);
+        }
+
+        if (m_is_simulate_node_missing) {
             Simulator::Schedule (m_hello_interval+random_offset+Seconds(1), &EvolutionApplication::CheckMissing, this);
+        }
+        
+        if (m_is_simulate_change_leader) {
+            Simulator::Schedule (m_hello_interval+random_offset+Seconds(2), &EvolutionApplication::CheckLeaderMissing, this);
         }
     }
     else
@@ -288,6 +301,17 @@ bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packe
                 // 已经找到失联节点，但由于sumo的仿真能力，无法仿真之后的动作
                 std::cout << " 已找到失联节点" << std::endl;
                 break;
+            case CHECK_LEADER_MESSAGE:
+                HandleCheckLeaderMessage(sender);
+                break;
+            case CHECK_LEADER_REPLY_MESSAGE:
+                HandleCheckLeaderReplyMessage();
+                break;
+            case NEW_LEADER_MESSAGE:
+                HandleNewLeaderMessage(buffer);
+                break;
+            case NEW_LEADER_REPLY_MESSAGE:
+                break;
             default:
                 NS_LOG_ERROR("unknown message type");
                 break;
@@ -426,11 +450,6 @@ bool EvolutionApplication::CheckMissing()
     return false;
 }
 
-void switchLeader()
-{
-    
-}
-
 void EvolutionApplication::PrintRouter() {
     std::cout << "======= begin print router =======" << std::endl;
     for (std::map<Address,Address>::iterator iter = m_router.begin();
@@ -469,7 +488,7 @@ void EvolutionApplication::SendHello(){
     //广播心跳包
     SendInformation(packet,m_parent.mac);
     Simulator::Schedule (m_hello_interval, &EvolutionApplication::SendHello, this);
-    
+
 }
 
 void EvolutionApplication::HandleHelloMessage(uint8_t *buffer, const Address &sender, Time timestamp){
@@ -708,12 +727,110 @@ void EvolutionApplication::HandleMissingMessage(uint8_t *buffer) {
 bool EvolutionApplication::CheckLeaderMissing() {
     // 所有二级节点发现leader无了
 
-    // 只由二级节点判断
-    if (!IsSecondLevelNode()) {
+    // 只由二级节点候选人判断
+    if (!m_is_next_leader) {
         return false;
     }
+
+    if (Now() - m_leader.last_beacon < m_max_hello_interval) {
+        return false;
+    }
+
+    std::cout << GetAddress() << " 发现Leader失联，开始向兄弟节点确认" << std::endl;
+
+    Ptr<Packet> packet = Create<Packet>(); // 暂不需要payload
+    //建立确认消息消息头
+    MessageHeader tag;
+    tag.SetType(CHECK_LEADER_MESSAGE);
+    tag.SetTimestamp(Now());
+    tag.SetPayloadSize(0);
+    tag.SetDesAddr(Mac48Address::GetBroadcast()); // meaningless
+    tag.SetSrcAddr(GetAddress());
+    packet->AddPacketTag(tag);
+
+    // 向兄弟节点发消息，确认是leader没了
+    SendToBrothers(packet);
+
     return true;
 }
+
+void EvolutionApplication::HandleCheckLeaderMessage(const Address &sender) {
+    NeighborInformation ni;
+    Ptr<Packet> packet = Create<Packet>((uint8_t *)&ni, sizeof(ni)); // 暂不需要payload，但如果要算引领度就要了
+    //建立确认消息消息头
+    MessageHeader tag;
+    tag.SetType(CHECK_LEADER_REPLY_MESSAGE);
+    tag.SetTimestamp(Now());
+    tag.SetPayloadSize(sizeof(ni));
+    tag.SetDesAddr(sender);
+    tag.SetSrcAddr(GetAddress());
+    packet->AddPacketTag(tag);
+    m_wifiDevice->Send(packet, sender, 0x88dc);
+    std::cout << GetAddress() << " 向候选人 " << sender  << " 反馈" << std::endl;
+}
+
+void EvolutionApplication::HandleCheckLeaderReplyMessage() {
+    // std::unique_lock pl(m_is_changing_leader_lock);
+    if (m_is_changing_leader) { // 正在changing
+        // pl.unlock();
+        return;
+    }
+    m_is_changing_leader = true;
+    // pl.unlock();
+    std::cout << GetAddress() << " 已确定Leader失联，开始执行Leader更替" << std::endl;
+    ChangeLeader();
+    m_is_changing_leader = false; // 更新完毕
+}
+
+void EvolutionApplication::ChangeLeader() {
+    // 推举引领度最高的节点
+    // 这里暂时默认是推举调用这个方法的节点为新leader
+    // 换言之，引领度最高节点的计算是其中一个二级节点负责，但是计算的节点不一定是leader
+    // 它只负责使用NewLeaderMessage推举新leader
+    NeighborInformation ni;
+    ni.mac = GetAddress();
+    ni.pos = GetLocation();
+    ni.last_beacon = Now();
+
+    Ptr<Packet> packet = Create<Packet>((uint8_t *)&ni, sizeof(ni)); // 不需要payload
+    //建立确认消息消息头
+    MessageHeader tag;
+    tag.SetType(NEW_LEADER_MESSAGE);
+    tag.SetTimestamp(Now());
+    tag.SetPayloadSize(sizeof(ni));
+    tag.SetDesAddr(Mac48Address::GetBroadcast()); // meaningless
+    tag.SetSrcAddr(GetAddress());
+    packet->AddPacketTag(tag);
+
+    // 通知brothers新的leader是谁
+    SendToBrothers(packet);
+
+    // todo 通知其它车群Leader，新Leader是谁，但是需要二级节点备份Leader信息
+    // SendToAllOtherLeaders(packet);
+}
+
+void EvolutionApplication::HandleNewLeaderMessage(uint8_t *buffer) {
+    // NeighborInformation *ni = (NeighborInformation *) buffer;
+    std::cout << "二级节点 " << GetAddress() << " 更新Leader信息，并通知子节点更新Leader信息" << std::endl;
+    // m_leader.mac = ni->mac;
+    // m_leader.last_beacon = ni->last_beacon;
+    // m_leader.pos = ni->pos;
+    
+    // 如果自己是新leader，level都要-1
+    // bool isChangeLevel = ni->mac == GetAddress();
+    // UpdateGroupAfterChangeLeader(ni, isChangeLevel);
+}
+
+void EvolutionApplication::UpdateGroupAfterChangeLeader(NeighborInformation *leader, bool isChangeLevel) {
+    // todo 在更替leader后递归更新数据 不做了，因为不影响仿真结果 
+}
+
+void EvolutionApplication::SendToBrothers(Ptr<Packet> packet) {
+    for (std::vector<NeighborInformation>::iterator iter = m_brothers.begin();
+        iter != m_brothers.end(); iter++) {
+        m_wifiDevice->Send(packet, iter->mac, 0x88dc); // 这种写法不好，但是SendInformation不行，无兄弟节点路由信息
+    }
+} 
 
 bool EvolutionApplication::IsSecondLevelNode() {
     return m_level == 2;
