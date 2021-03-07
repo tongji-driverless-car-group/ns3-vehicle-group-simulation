@@ -704,3 +704,24 @@ void EvolutionApplication::HandleMissingMessage(uint8_t *buffer) {
         std::cout << GetAddress() << " 正在搜寻节点" << std::endl;
     }
 }
+
+bool EvolutionApplication::CheckLeaderMissing() {
+    // 所有二级节点发现leader无了
+
+    // 只由二级节点判断
+    if (!IsSecondLevelNode()) {
+        return false;
+    }
+    return true;
+}
+
+bool EvolutionApplication::IsSecondLevelNode() {
+    return m_level == 2;
+}
+
+void EvolutionApplication::PrintBrothers() {
+    for (std::vector<NeighborInformation>::iterator iter = m_brothers.begin();
+        iter != m_brothers.end(); iter++) {
+        std::cout << iter->mac << std::endl;
+    }
+}

@@ -42,6 +42,21 @@ void GroupInitializer::ConstructVehicleGroup(VGTree* root, VGTree* t,VGTree* par
         // 在路由表里添加：<leader, parent>和<parent, parent>
         // node_app->m_router[leader_info.mac] = parent_info.mac;
         // node_app->m_router[parent_info.mac] = parent_info.mac;
+
+        // 储存兄弟节点信息
+        for(int8_t i = 0; i < parent->c_num; i++) {
+            NeighborInformation brother_info;
+            int brother_node_id = parent->child[i]->node_id;
+            if (brother_node_id == t->node_id) { // 是自己
+                continue;
+            }
+            Ptr<Node> brother_node = nodes.Get(brother_node_id);
+            Ptr<NetDevice> brother_dev = brother_node->GetDevice(0);
+            brother_info.mac = brother_dev->GetAddress();
+            brother_info.last_beacon = Now();
+            node_app->m_brothers.push_back(brother_info);
+            std::cout << brother_info.mac << std::endl;
+        }
     }
     
     for(int8_t i=0;i<t->c_num;i++){
@@ -70,8 +85,11 @@ void GroupInitializer::ConstructVehicleGroup(VGTree* root, VGTree* t,VGTree* par
     }
 
     // debug
-    std::cout << t->node_id+1 << ":" << std::endl;
+    std::cout << t->node_id + 1 << ":" << std::endl;
     node_app->PrintRouter();
+    std::cout << "has brothers: " << std::endl;
+    node_app->PrintBrothers();
+    std::cout << std::endl;
 }
 
 void GroupInitializer::ConstructLinkBetweenGroups(NodeContainer& nodes){

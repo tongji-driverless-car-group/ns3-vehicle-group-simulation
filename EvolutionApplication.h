@@ -178,8 +178,18 @@ public:
     // 处理MISSING_MESSAGE
     void HandleMissingMessage(uint8_t *buffer);
 
+    // 检查是否leader失联
+    // 该函数与CheckMissing区别在于，后者只能查找子节点是否missing
+    // 而leader失联是根据所有二级节点都找不到leader为准
+    bool CheckLeaderMissing();
+
+    // 判断自己是否是二级节点
+    bool IsSecondLevelNode();
+
     // for debug
     void PrintRouter();
+
+    void PrintBrothers();
 private:
     //StartApplication函数是应用启动后第一个调用的函数
     void StartApplication();
@@ -202,7 +212,7 @@ public:
     NeighborInformation m_leader; //车群的leader信息
     std::vector<NeighborInformation> m_neighbor_leaders;//其它邻近leader信息，只有车群的leader维护这个表
     std::map<Address,Address> m_router; //路由信息router[mac]即为发送到mac消息下一跳要发送的节点
-    
+    std::vector<NeighborInformation> m_brothers; // 兄弟节点信息
     
     //心跳包相关
     bool m_debug_hello;

@@ -38,6 +38,8 @@ int main (int argc, char *argv[])
         TestAvoidObstable(true);
     } else if (testCase == "avoidOuterObstacle") {
         TestAvoidObstable(false);
+    } else if (testCase == "changeLeader") {
+        TestChangeLeader();
     } else {
         TestGroupInitialer();
     }

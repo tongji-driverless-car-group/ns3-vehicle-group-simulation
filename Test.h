@@ -5,5 +5,6 @@ void TestGroupInitialer();
 void TestVGTreeHelper();
 void TestConstructGroup();
 void TestAvoidObstable(bool isInnerObstacle);
+void TestChangeLeader();
 
 #endif
