@@ -200,7 +200,7 @@ public:
     void HandleCheckLeaderMessage(const Address &addr);
 
     // 处理CheckLeaderReplyMessage
-    void HandleCheckLeaderReplyMessage();
+    void HandleCheckLeaderReplyMessage(const Address &sender);
 
     void HandleNewLeaderMessage(uint8_t *buffer);
 
@@ -254,7 +254,6 @@ public:
 
     // ------------ 节点失联相关 -------------
     bool m_is_simulate_node_missing; // 是否仿真节点失联
-    bool m_has_missing_son; // 有丢失的子节点，类似于记录状态，避免重复报告失联
     Time m_max_hello_interval; // 超过该时间长度认为失联
     Time m_confirm_missing_interval; // 搜索失败，leader向上汇报节点失联
     Time m_missing_time; // 失联时间
@@ -266,8 +265,7 @@ public:
     // ------------ change leader相关 --------------
     bool m_is_simulate_change_leader;
     bool m_is_next_leader; // 是二级节点中引领度最高的节点
-    bool m_is_changing_leader;
-    // mutex m_is_changing_leader_lock;
+    std::map<Address, bool> m_check_other_second_level_nodes;
 };
 
 #endif

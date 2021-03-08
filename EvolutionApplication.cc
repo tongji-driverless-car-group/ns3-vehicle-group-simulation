@@ -52,7 +52,6 @@ EvolutionApplication::EvolutionApplication()
 
     // ---------- 节点失联相关 ----------
     m_is_simulate_node_missing = false;
-    m_has_missing_son = false;
     m_max_hello_interval = Seconds(1.2 * HELLO_INTERVAL);
     m_confirm_missing_interval = Seconds(3 * HELLO_INTERVAL);
     m_is_missing = false;
@@ -60,7 +59,6 @@ EvolutionApplication::EvolutionApplication()
 
     // ---------- change leader相关 -----------
     m_is_simulate_change_leader = false;
-    m_is_changing_leader = false;
 }
 
 EvolutionApplication::~EvolutionApplication()
@@ -305,7 +303,7 @@ bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packe
                 HandleCheckLeaderMessage(sender);
                 break;
             case CHECK_LEADER_REPLY_MESSAGE:
-                HandleCheckLeaderReplyMessage();
+                HandleCheckLeaderReplyMessage(sender);
                 break;
             case NEW_LEADER_MESSAGE:
                 HandleNewLeaderMessage(buffer);
@@ -410,10 +408,9 @@ bool EvolutionApplication::CheckMissing()
 {
     for(vector<NeighborInformation>::iterator iter = m_next.begin(); iter != m_next.end(); iter++){
         // 查看是否很久没收到子节点的心跳包了，如果是则发出搜索消息
-        // m_has_missing_son = true意为已经报告过失联了，避免重复报告失联
         Time curTime = Now();
         // std::cout << GetAddress() << ":" << iter->mac << " last_beacon: " << iter->last_beacon << " " << curTime - iter->last_beacon << " " << m_max_hello_interval << std::endl;
-        if (curTime - iter->last_beacon > m_max_hello_interval && !m_has_missing_son) {
+        if (curTime - iter->last_beacon > m_max_hello_interval) {
             SearchInformation si;
             // 记录失联节点的leader是谁
             si.leader = m_leader;
@@ -443,10 +440,12 @@ bool EvolutionApplication::CheckMissing()
                 std::cout << GetAddress() << " 检测到节点失联，正在告知其leader" << std::endl; 
                 SendToLeader(packet);
             }
-            m_has_missing_son = true;
+
+            m_next.erase(iter); // 直接退出循环 不会有问题
             return true;
         }
     }
+
     return false;
 }
 
@@ -735,6 +734,10 @@ bool EvolutionApplication::CheckLeaderMissing() {
     if (Now() - m_leader.last_beacon < m_max_hello_interval) {
         return false;
     }
+    
+    for (auto iter = m_brothers.begin(); iter != m_brothers.end(); iter++) {
+        m_check_other_second_level_nodes[iter->mac] = false;
+    }
 
     std::cout << GetAddress() << " 发现Leader失联，开始向兄弟节点确认" << std::endl;
 
@@ -769,17 +772,18 @@ void EvolutionApplication::HandleCheckLeaderMessage(const Address &sender) {
     std::cout << GetAddress() << " 向候选人 " << sender  << " 反馈" << std::endl;
 }
 
-void EvolutionApplication::HandleCheckLeaderReplyMessage() {
-    // std::unique_lock pl(m_is_changing_leader_lock);
-    if (m_is_changing_leader) { // 正在changing
-        // pl.unlock();
-        return;
+void EvolutionApplication::HandleCheckLeaderReplyMessage(const Address &sender) {
+    m_check_other_second_level_nodes[sender] = true;
+    std::cout << GetAddress() << " 已收到其它二级节点 " << sender << " 反馈消息" << std::endl;
+    for (auto iter = m_check_other_second_level_nodes.begin();
+        iter != m_check_other_second_level_nodes.end(); iter++) {
+        if (!iter->second) {
+            return;
+        }
     }
-    m_is_changing_leader = true;
-    // pl.unlock();
+    
     std::cout << GetAddress() << " 已确定Leader失联，开始执行Leader更替" << std::endl;
     ChangeLeader();
-    m_is_changing_leader = false; // 更新完毕
 }
 
 void EvolutionApplication::ChangeLeader() {
