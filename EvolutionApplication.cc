@@ -32,7 +32,6 @@ EvolutionApplication::EvolutionApplication()
     m_max_subnodes = MAX_SUBNODES;
     m_hello_interval = Seconds(HELLO_INTERVAL);
     m_check_missing_interval = Seconds(CHECK_MISSING_INTERVAL);
-    m_time_limit = Seconds (TIME_LIMIT);
     m_mode = WifiMode(WIFI_MODE);
     m_state = INITIAL_STATE;
     m_wait_construct_time = Seconds(WAIT_CONSTRUCT_TIME);
@@ -52,10 +51,14 @@ EvolutionApplication::EvolutionApplication()
 
     // ---------- 节点失联相关 ----------
     m_is_simulate_node_missing = false;
-    m_max_hello_interval = Seconds(1.2 * HELLO_INTERVAL);
-    m_confirm_missing_interval = Seconds(3 * HELLO_INTERVAL);
-    m_is_missing = false;
-    m_missing_time = Seconds(1.2 * HELLO_INTERVAL); 
+    m_check_missing_interval = Seconds(CHECK_MISSING_INTERVAL);
+    m_max_hello_interval = Seconds(MAX_HELLO_INTERVAL); // 超过该时间长度认为失联
+    m_search_time = Seconds(SEARCH_TIME); //搜寻失联节点的时间
+    m_stay_missing_time = Seconds(STAY_MISSING_TIME);//失联节点保持失联状态的时间
+    // m_max_hello_interval = Seconds(1.2 * HELLO_INTERVAL);
+    // m_confirm_missing_interval = Seconds(3 * HELLO_INTERVAL);
+    // m_is_missing = false;
+    // m_missing_time = Seconds(1.2 * HELLO_INTERVAL); 
 
     // ---------- change leader相关 -----------
     m_is_simulate_change_leader = false;
@@ -113,7 +116,7 @@ void EvolutionApplication::StartApplication()
         }
 
         if (m_is_simulate_node_missing) {
-            Simulator::Schedule (m_hello_interval+random_offset+Seconds(1), &EvolutionApplication::CheckMissing, this);
+            Simulator::Schedule (m_check_missing_interval, &EvolutionApplication::CheckMissing, this);
         }
         
         if (m_is_simulate_change_leader) {
@@ -282,22 +285,17 @@ bool EvolutionApplication::ReceivePacket (Ptr<NetDevice> device, Ptr<const Packe
             // case AVOID_MESSAGE:
             //     std::cout << GetAddress() << " is avoiding obstacle" << std::endl;
             //     break;
-            case SEARCH_MESSAGE:
-                // 如果是leader失联，switchLeader
-                // 如果是普通节点失联，则向其leader发送查找节点命令
-                if (isLeader()) {
-                    std::cout << "Leader " << GetAddress() << " 下令本车群搜索" << std::endl; 
-                    SendGroupInformation(copy_packet);
-                } else {
-                    std::cout << GetAddress() << " 正在协助搜索失联节点" << std::endl; 
-                }
-                break;
             case MISSING_MESSAGE:
                 HandleMissingMessage(buffer);
                 break;
-            case FOUND_MESSAGE:
-                // 已经找到失联节点，但由于sumo的仿真能力，无法仿真之后的动作
-                std::cout << " 已找到失联节点" << std::endl;
+            case SEARCH_MESSAGE:
+                HandleSearchMessage()
+                break;
+            case RETURN_MESSAGE:
+                HandleReturnMessage();
+                break;
+            case RECEIVE_MESSAGE:
+                HandleReturnMessage();
                 break;
             case CHECK_LEADER_MESSAGE:
                 HandleCheckLeaderMessage(sender);
@@ -411,42 +409,164 @@ bool EvolutionApplication::CheckMissing()
         Time curTime = Now();
         // std::cout << GetAddress() << ":" << iter->mac << " last_beacon: " << iter->last_beacon << " " << curTime - iter->last_beacon << " " << m_max_hello_interval << std::endl;
         if (curTime - iter->last_beacon > m_max_hello_interval) {
-            SearchInformation si;
-            // 记录失联节点的leader是谁
-            si.leader = m_leader;
-            // 记录上一次收到失联节点的位置和时间
-            si.pos = iter->pos;
-            si.last_beacon = iter->last_beacon;
-
-            Ptr<Packet> packet = Create<Packet>((uint8_t*)&si, sizeof(si));
-
-            //建立消息消息头 
-            MessageHeader tag;
-            
-            tag.SetTimestamp(Now());
-            tag.SetPayloadSize(sizeof(si));
-            tag.SetDesAddr(Mac48Address::GetBroadcast()); // meaningless
-            tag.SetSrcAddr(GetAddress());
-            
-            if (isLeader()) {
-                tag.SetType(SEARCH_MESSAGE);
-                packet->AddPacketTag (tag);
-                std::cout << "Leader " << GetAddress() << " 正在请求其它车群搜索失联节点，并下令本车群搜索" << std::endl; 
-                SendGroupInformation(packet);
-                SendToAllOtherLeaders(packet);
-            } else {
-                tag.SetType(MISSING_MESSAGE);
-                packet->AddPacketTag (tag);
-                std::cout << GetAddress() << " 检测到节点失联，正在告知其leader" << std::endl; 
-                SendToLeader(packet);
+            if(isLeader()){
+                SendMissingMessage(iter->mac, iter->last_beacon, iter->pos);
             }
-
+            else{
+                SendSearchMessage(iter->mac);
+                m_search_nodes[iter->mac] = Now()+m_search_time;
+            }
             m_next.erase(iter); // 直接退出循环 不会有问题
             return true;
         }
     }
 
     return false;
+}
+
+void EvolutionApplication::SendMissingMessage(Address miss_mac, Time last_beacon, Vector pos){
+    MissingInformation mi;
+    mi.mac = miss_mac;
+    mi.last_beacon = last_beacon;
+    mi.pos = pos;
+    Ptr<Packet> packet = Create<Packet>((uint8_t*)&mi, sizeof(mi));
+
+    //丢失消息消息头
+    MessageHeader tag;
+    tag.SetType(MISSING_MESSAGE);
+    tag.SetTimestamp(Now());
+    tag.SetPayloadSize(sizeof(mi));
+    tag.SetDesAddr(m_leader.mac);
+    tag.SetSrcAddr(m_wifiDevice->GetAddress());
+    packet->AddPacketTag (tag);
+
+    SendToLeader(packet);
+}
+
+void EvolutionApplication::SendSearchMessage(Address miss_mac){
+    SearchInformation si;
+    si.mac = miss_mac;
+    si.stopTime = Now() + m_search_time;
+    Ptr<Packet> packet = Create<Packet>((uint8_t*)&si, sizeof(si));
+
+    //搜寻消息消息头
+    MessageHeader tag;
+    tag.SetType(SEARCH_MESSAGE);
+    tag.SetTimestamp(Now());
+    tag.SetPayloadSize(sizeof(si));
+    tag.SetDesAddr(Mac48Address::GetBroadcast());
+    tag.SetSrcAddr(m_wifiDevice->GetAddress());
+    packet->AddPacketTag (tag);
+
+    SendGroupInformation(packet);
+}
+
+void EvolutionApplication::HandleSearchMessage(uint8_t *buffer){
+    SearchInformation* si = (SearchInformation*)buffer;
+    m_search_nodes[si->mac] = si->stopTime;
+}
+
+void EvolutionApplication::BroadcastReturnInformation(){
+    ReturnInformation ri;
+    Ptr<Packet> packet = Create<Packet>((uint8_t*)&ri, sizeof(ri));
+
+    //搜寻消息消息头
+    MessageHeader tag;
+    tag.SetType(RETURN_MESSAGE);
+    tag.SetTimestamp(Now());
+    tag.SetPayloadSize(sizeof(ri));
+    tag.SetDesAddr(Mac48Address::GetBroadcast());
+    tag.SetSrcAddr(m_wifiDevice->GetAddress());
+    packet->AddPacketTag (tag);
+
+    BroadcastInformation(packet);
+}
+
+void EvolutionApplication::HandleReturnInformation(const Address addr){
+    //达到最大子节点数则不处理消息
+    if(m_next.size() >= m_max_subnodes){
+        return;
+    }
+    for(map<Address,Time>::iterator iter = m_search_nodes.begin(); iter != m_search_nodes.end(); ){
+        //搜寻消息已经过期，则将搜寻信息移除
+        if(iter->second < Now()){
+            m_search_nodes.erase(iter);
+            continue;
+        }
+
+        //如果找到了丢失节点
+        if(iter->first == addr){
+            SendReceiveMessage();
+            break;
+        }
+        iter++
+    }
+}
+
+void EvolutionApplication::SendReceiveMessage(const Address addr){
+    ReceiveInformation ri;
+    ri.task_id = m_task_id;
+    ri.leader = m_leader;
+    ri.parent.mac = GetAddress();
+    ri.parent.pos = GetLocation();
+    ri.parent.last_beacon = Now();
+    ri.level = m_level + 1;
+    if(isLeader()){
+        ri.brothers.insert()
+    }
+
+    Ptr<Packet> packet = Create<Packet>((uint8_t*)&ri, sizeof(ri));
+
+    //搜寻消息消息头
+    MessageHeader tag;
+    tag.SetType(RECEIVE_MESSAGE);
+    tag.SetTimestamp(Now());
+    tag.SetPayloadSize(sizeof(ri));
+    tag.SetDesAddr(addr);
+    tag.SetSrcAddr(GetAddress());
+    packet->AddPacketTag (tag);
+
+    m_wifiDevice->Send (packet, addr, 0x88dc);
+}
+
+void EvolutionApplication::HandleReceiveMessage(uint8_t *buffer){
+    if(!IsMissing()){
+        return ;
+    }
+    ReceiveInformation* ri = (ReceiveInformation*)buffer;
+    m_leader = ri.leader;
+    m_parent = ri.parent;
+    m_level = ri.level;
+    m_brothers = ri->brothers;
+    SendReceiveReplyMessage(m_parent.mac);
+}
+
+void EvolutionApplication::SendReceiveReplyMessage(const Address  addr){
+    ReceiveReplyInformation rri;
+    
+    Ptr<Packet> packet = Create<Packet>((uint8_t*)&rri, sizeof(rri));
+
+    //搜寻消息消息头
+    MessageHeader tag;
+    tag.SetType(RECEIVE_REPLY_MESSAGE);
+    tag.SetTimestamp(Now());
+    tag.SetPayloadSize(sizeof(rri));
+    tag.SetDesAddr(addr);
+    tag.SetSrcAddr(GetAddress());
+    packet->AddPacketTag (tag);
+
+    m_wifiDevice->Send (packet, addr, 0x88dc);
+}
+
+void EvolutionApplication::HandleReceiveReplyMessage(uint8_t *buffer, const Address addr,){
+    ReceiveReplyInformation* rri = (ReceiveReplyInformation*)buffer;
+    SendReportMessage();
+
+}
+
+void EvolutionApplication::SendReportMessage(){
+    Ptr<Packet> packet = Create<Packet>();
+    SendToLeader(packet);
 }
 
 void EvolutionApplication::PrintRouter() {

@@ -126,18 +126,6 @@ void TestConstructGroup(){
     // 基点是waf所在目录
     Ns2MobilityHelper mobility("./scratch/ns3-vehicle-group-simulation/sumofiles/vehicleGroupConstruct/vehicleGroupConstruct.tcl");
     mobility.Install(nodes.Begin(), nodes.End());
-//    MobilityHelper mobility;
-//    Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-//    positionAlloc->Add (Vector (0, 0, 0));
-//    positionAlloc->Add (Vector (0, 0, 1));
-//    positionAlloc->Add (Vector (0, 0, 2));
-//    positionAlloc->Add (Vector (0, 1, 3));
-//    positionAlloc->Add (Vector (0, 0, 4));
-//    positionAlloc->Add (Vector (0, 1, 5));
-//    positionAlloc->Add (Vector (0, 0, 6));
-//    mobility.SetPositionAllocator (positionAlloc);
-//    mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-//    mobility.Install (nodes);
     
     // The below set of helpers will help us to put together the wifi NICs we want
     YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
@@ -165,6 +153,7 @@ void TestConstructGroup(){
     app0->SetStopTime (Seconds (simTime));
     app0->AssignTaskAtTime(1,Seconds(0));
     app0->m_debug_construct = true;
+    app0->m_is_simulate_hello = false;
     nodes.Get(0)->AddApplication (app0);
     
     Ptr<EvolutionApplication> app1 = CreateObject<EvolutionApplication>();
@@ -172,6 +161,7 @@ void TestConstructGroup(){
     app1->SetStopTime (Seconds (simTime));
     app1->AssignTaskAtTime(1,Seconds(10));
     app1->m_debug_construct = true;
+    app1->m_is_simulate_hello = false;
     nodes.Get(1)->AddApplication (app1);
     
     Ptr<EvolutionApplication> app2 = CreateObject<EvolutionApplication>();
@@ -179,6 +169,7 @@ void TestConstructGroup(){
     app2->SetStopTime (Seconds (simTime));
     app2->AssignTaskAtTime(1,Seconds(10));
     app2->m_debug_construct = true;
+    app2->m_is_simulate_hello = false;
     nodes.Get(2)->AddApplication (app2);
     
     Ptr<EvolutionApplication> app3 = CreateObject<EvolutionApplication>();
@@ -186,6 +177,7 @@ void TestConstructGroup(){
     app3->SetStopTime (Seconds (simTime));
     app3->AssignTaskAtTime(1,Seconds(20));
     app3->m_debug_construct = true;
+    app3->m_is_simulate_hello = false;
     nodes.Get(3)->AddApplication (app3);
     
     Ptr<EvolutionApplication> app4 = CreateObject<EvolutionApplication>();
@@ -193,6 +185,7 @@ void TestConstructGroup(){
     app4->SetStopTime (Seconds (simTime));
     app4->AssignTaskAtTime(1,Seconds(20));
     app4->m_debug_construct = true;
+    app4->m_is_simulate_hello = false;
     nodes.Get(4)->AddApplication (app4);
     
     Ptr<EvolutionApplication> app5 = CreateObject<EvolutionApplication>();
@@ -200,6 +193,7 @@ void TestConstructGroup(){
     app5->SetStopTime (Seconds (simTime));
     app5->AssignTaskAtTime(1,Seconds(20));
     app5->m_debug_construct = true;
+    app5->m_is_simulate_hello = false;
     nodes.Get(5)->AddApplication (app5);
     Simulator::Stop(Seconds(simTime));
     
@@ -208,6 +202,7 @@ void TestConstructGroup(){
     app6->SetStopTime (Seconds (simTime));
     app6->AssignTaskAtTime(1,Seconds(20));
     app6->m_debug_construct = true;
+    app6->m_is_simulate_hello = false;
     nodes.Get(6)->AddApplication (app6);
     Simulator::Stop(Seconds(simTime));
     //netAnim可视化
@@ -219,14 +214,9 @@ void TestConstructGroup(){
     Simulator::Destroy();
 }
 
-void TestAvoidObstable(bool isInnerObstacle) {
+void TestAvoidObstable() {
     uint32_t nNodes = 6;//节点数目
-    double simTime = 0;
-    if (isInnerObstacle) {
-        simTime = 10;
-    } else {
-        simTime = 1.2; //仿真时间
-    }
+    double simTime = 1.2; //仿真时间
 
     NodeContainer nodes;
     nodes.Create(nNodes);
@@ -282,111 +272,16 @@ void TestAvoidObstable(bool isInnerObstacle) {
     {
         Ptr<EvolutionApplication> app_i = CreateObject<EvolutionApplication>();
         // ======================= application 的一些参数的初始化 begin =============================
-        
-        // ---------- 避障相关 -------------
-        if (isInnerObstacle) {
-            // 默认值见EvolutionApplication的构造函数
-            app_i->SetStartTime (Seconds (0));
-            app_i->SetStopTime (Seconds(simTime));
-            if (i == 0) { // 特定车辆停止仿真，当作它是内部障碍
-                app_i->m_is_missing = true;
-            }
-            
-            app_i->m_is_simulate_node_missing = true;
-        } else {
-            // 默认值见EvolutionApplication的构造函数
-            app_i->SetStartTime (Seconds (0));
-            app_i->SetStopTime (Seconds (simTime));
-            app_i->m_is_simulate_avoid_outer_obstacle = true;
-            app_i->m_check_obstacle_interval = Seconds(1);
-            app_i->m_obstacle = Vector(60, -4.8, 0);
-            app_i->m_safe_avoid_obstacle_distance = 21;
-        }
-
-        nodes.Get(i)->AddApplication (app_i);
-        // ======================= application 的一些参数的初始化 end ===============================
-        
-    }
-
-    Simulator::Stop(Seconds(simTime));
-    
-    //初始化车群
-    gi.Construct(nodes);
-  
-    //netAnim可视化
-//    AnimationInterface anim("EvolutionApplication.xml");
-//    anim.SetMobilityPollInterval (Seconds (1));
-  
-    Simulator::Run();
-
-    Simulator::Destroy();
-}
-
-void TestChangeLeader() {
-    uint32_t nNodes = 7;//节点数目
-    double simTime = 10;// max: 22
-    
-
-    NodeContainer nodes;
-    nodes.Create(nNodes);
-  
-    LogComponentEnable ("EvolutionApplication", LOG_LEVEL_FUNCTION);
-    
-    //使用NS3的移动模型，可以修改为SUMO的FCD输出
-    // 基点是waf所在目录
-    Ns2MobilityHelper mobility("./scratch/ns3-vehicle-group-simulation/sumofiles/changeLeader/mobility.tcl");
-    mobility.Install(nodes.Begin(), nodes.End());
-
-    VGTreeHelper vh;
-    GroupInitializer gi;
-    
-    // 红色车, changeLeader.rou.xml上的红色车
-    vh.AddLeader(2);
-    vh.AddSubNodesFor(vector<int>({1, 3, 4}), 2);
-    vh.AddSubNodesFor(vector<int>({5}), 1);
-    vh.AddSubNodesFor(vector<int>({6}), 3);
-    vh.AddSubNodesFor(vector<int>({0}), 4);
-    gi.AddGroup(vh.GetTree());
-    
-    gi.PrintGroupStructures();
-    
-    // The below set of helpers will help us to put together the wifi NICs we want
-    YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
-    YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
-    Ptr<YansWifiChannel> channel = wifiChannel.Create ();
-    wifiPhy.SetChannel (channel);
-  
-    //可以调节通信距离
-//    wifiPhy.Set ("TxPowerStart", DoubleValue (20) );
-//    wifiPhy.Set ("TxPowerEnd", DoubleValue (40) );
-
-    // ns-3 supports generate a pcap trace
-    wifiPhy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11);
-    NqosWaveMacHelper wifi80211pMac = NqosWaveMacHelper::Default ();
-    Wifi80211pHelper wifi80211p = Wifi80211pHelper::Default ();
-
-    wifi80211p.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
-                                      "DataMode",StringValue ("OfdmRate6MbpsBW10MHz"),
-                                      "ControlMode",StringValue ("OfdmRate6MbpsBW10MHz"));
-    NetDeviceContainer devices = wifi80211p.Install (wifiPhy, wifi80211pMac, nodes);
-
-    //为节点添加应用
-    for (uint32_t i=0; i<nodes.GetN(); i++)
-    {
-        Ptr<EvolutionApplication> app_i = CreateObject<EvolutionApplication>();
-        // ======================= application 的一些参数的初始化 begin =============================
-        
         // 默认值见EvolutionApplication的构造函数
         app_i->SetStartTime (Seconds (0));
         app_i->SetStopTime (Seconds (simTime));
-        if (i == 2) { // leader失联
-            app_i->m_is_missing = true;
-        }
-        if (i == 3) { // 新leader
-            app_i->m_is_next_leader = true; // 默认，谁是下一任leader是共识，也就是二级节点必有且只有一个该字段为true
-        }
-        
-        app_i->m_is_simulate_change_leader = true;
+
+        // ---------- 避障相关 -------------
+        app_i->m_is_simulate_avoid_obstacle = true;
+        app_i->m_check_obstacle_interval = Seconds(1);
+        app_i->m_obstacle = Vector(60, -4.8, 0);
+        app_i->m_safe_avoid_obstacle_distance = 21;
+
         nodes.Get(i)->AddApplication (app_i);
         // ======================= application 的一些参数的初始化 end ===============================
         
