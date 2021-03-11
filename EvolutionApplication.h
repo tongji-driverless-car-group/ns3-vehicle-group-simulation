@@ -84,7 +84,7 @@ const double WAIT_CONSTRUCT_TIME = 5;//等待车群建立消息的时间
 const double CONSTRUCT_INTERVAL = 2;//发送车群建立消息的时间间隔
 
 const double CHECK_MISSING_INTERVAL = 2.0; //检查丢失节点的周期 单位s
-const double MAX_HELLO_INTERVAL = 3.0; //确认节点丢失的通信时间限制 单位s
+const double MAX_HELLO_INTERVAL = 2.0; //确认节点丢失的通信时间限制 单位s
 const double STAY_MISSING_TIME = 5;//从失联状态转为Leader的间隔
 const double SEARCH_TIME = 5;//搜寻的时间
 
@@ -223,22 +223,22 @@ public:
     void HandleSearchMessage(uint8_t *buffer);
 
     //广播回归消息
-    void BroadcastReturnInformation();
+    void BroadcastReturnMessage();
 
     //处理回归消息
-    void HandleReturnInformation(const Address addr);
+    void HandleReturnMessage(uint8_t *buffer, const Address addr);
 
     //搜寻到自己想要的节点，发送接收消息
-    void SendReceiveMessage();
+    void SendReceiveMessage(const Address addr);
 
     //
-    void HandleReceiveMessage();
+    void HandleReceiveMessage(uint8_t *buffer);
 
     //
-    void SendReceiveReplyMessage();
+    void SendReceiveReplyMessage(const Address addr);
 
     //
-    void HandleReceiveReplyMessage();
+    void HandleReceiveReplyMessage(uint8_t *buffer);
 
     //
     void SendReportMessage();
@@ -279,9 +279,6 @@ public:
     uint8_t m_max_subnodes;//最大子结点数
     NodeState m_state;//当前车辆的状态
     Ptr<WifiNetDevice> m_wifiDevice; //车辆的WAVE设备
-    Time m_check_missing_interval;//检查丢失节点的周期
-    Time m_stay_missing_time;//节点保持失联状态的时间，超过该时间自动转为leader
-    Time m_search_time;//搜寻的时间
     Time m_hello_interval; //发送心跳包的间隔
     WifiMode m_mode; //wifi的模式
     
@@ -316,8 +313,8 @@ public:
     Time m_stay_missing_time;//失联节点保持失联状态的时间
     map<Address,Time> m_search_nodes;//需要搜寻节点的列表
     // Time m_confirm_missing_interval; // 搜索失败，leader向上汇报节点失联
-    // Time m_missing_time; // 失联时间
-    // bool m_is_missing; // 是否是失联的内部节点
+    Time m_missing_time; // 失联时间
+    bool m_is_missing; // 是否是失联的内部节点
 
     // bool m_is_found; // 是找到失联节点的节点
     // Time m_found_time; // 找到失联节点的时间

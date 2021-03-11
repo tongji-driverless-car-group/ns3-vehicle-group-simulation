@@ -127,6 +127,18 @@ void TestConstructGroup(){
     // 基点是waf所在目录
     Ns2MobilityHelper mobility("./scratch/ns3-vehicle-group-simulation/sumofiles/vehicleGroupConstruct/vehicleGroupConstruct.tcl");
     mobility.Install(nodes.Begin(), nodes.End());
+//    MobilityHelper mobility;
+//    Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
+//    positionAlloc->Add (Vector (0, 0, 0));
+//    positionAlloc->Add (Vector (0, 0, 1));
+//    positionAlloc->Add (Vector (0, 0, 2));
+//    positionAlloc->Add (Vector (0, 1, 3));
+//    positionAlloc->Add (Vector (0, 0, 4));
+//    positionAlloc->Add (Vector (0, 1, 5));
+//    positionAlloc->Add (Vector (0, 0, 6));
+//    mobility.SetPositionAllocator (positionAlloc);
+//    mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+//    mobility.Install (nodes);
     
     // The below set of helpers will help us to put together the wifi NICs we want
     YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
@@ -154,7 +166,6 @@ void TestConstructGroup(){
     app0->SetStopTime (Seconds (simTime));
     app0->AssignTaskAtTime(1,Seconds(0));
     app0->m_debug_construct = true;
-    app0->m_is_simulate_hello = false;
     nodes.Get(0)->AddApplication (app0);
     
     Ptr<EvolutionApplication> app1 = CreateObject<EvolutionApplication>();
@@ -162,7 +173,6 @@ void TestConstructGroup(){
     app1->SetStopTime (Seconds (simTime));
     app1->AssignTaskAtTime(1,Seconds(10));
     app1->m_debug_construct = true;
-    app1->m_is_simulate_hello = false;
     nodes.Get(1)->AddApplication (app1);
     
     Ptr<EvolutionApplication> app2 = CreateObject<EvolutionApplication>();
@@ -170,7 +180,6 @@ void TestConstructGroup(){
     app2->SetStopTime (Seconds (simTime));
     app2->AssignTaskAtTime(1,Seconds(10));
     app2->m_debug_construct = true;
-    app2->m_is_simulate_hello = false;
     nodes.Get(2)->AddApplication (app2);
     
     Ptr<EvolutionApplication> app3 = CreateObject<EvolutionApplication>();
@@ -178,7 +187,6 @@ void TestConstructGroup(){
     app3->SetStopTime (Seconds (simTime));
     app3->AssignTaskAtTime(1,Seconds(20));
     app3->m_debug_construct = true;
-    app3->m_is_simulate_hello = false;
     nodes.Get(3)->AddApplication (app3);
     
     Ptr<EvolutionApplication> app4 = CreateObject<EvolutionApplication>();
@@ -186,7 +194,6 @@ void TestConstructGroup(){
     app4->SetStopTime (Seconds (simTime));
     app4->AssignTaskAtTime(1,Seconds(20));
     app4->m_debug_construct = true;
-    app4->m_is_simulate_hello = false;
     nodes.Get(4)->AddApplication (app4);
     
     Ptr<EvolutionApplication> app5 = CreateObject<EvolutionApplication>();
@@ -194,7 +201,6 @@ void TestConstructGroup(){
     app5->SetStopTime (Seconds (simTime));
     app5->AssignTaskAtTime(1,Seconds(20));
     app5->m_debug_construct = true;
-    app5->m_is_simulate_hello = false;
     nodes.Get(5)->AddApplication (app5);
     Simulator::Stop(Seconds(simTime));
     
@@ -203,7 +209,6 @@ void TestConstructGroup(){
     app6->SetStopTime (Seconds (simTime));
     app6->AssignTaskAtTime(1,Seconds(20));
     app6->m_debug_construct = true;
-    app6->m_is_simulate_hello = false;
     nodes.Get(6)->AddApplication (app6);
     Simulator::Stop(Seconds(simTime));
     //netAnim可视化
@@ -215,9 +220,14 @@ void TestConstructGroup(){
     Simulator::Destroy();
 }
 
-void TestAvoidObstable() {
+void TestAvoidObstable(bool isInnerObstacle) {
     uint32_t nNodes = 6;//节点数目
-    double simTime = 1.2; //仿真时间
+    double simTime = 0;
+    if (isInnerObstacle) {
+        simTime = 10;
+    } else {
+        simTime = 1.2; //仿真时间
+    }
 
     NodeContainer nodes;
     nodes.Create(nNodes);
@@ -273,8 +283,6 @@ void TestAvoidObstable() {
     {
         Ptr<EvolutionApplication> app_i = CreateObject<EvolutionApplication>();
         // ======================= application 的一些参数的初始化 begin =============================
-<<<<<<< HEAD
-=======
         
         // ---------- 避障相关 -------------
         if (isInnerObstacle) {
@@ -374,17 +382,17 @@ void TestChangeLeader() {
         Ptr<EvolutionApplication> app_i = CreateObject<EvolutionApplication>();
         // ======================= application 的一些参数的初始化 begin =============================
         
->>>>>>> d7e03507f8e7fd4776be1908d22f32da49999a98
         // 默认值见EvolutionApplication的构造函数
         app_i->SetStartTime (Seconds (0));
         app_i->SetStopTime (Seconds (simTime));
-
-        // ---------- 避障相关 -------------
-        app_i->m_is_simulate_avoid_obstacle = true;
-        app_i->m_check_obstacle_interval = Seconds(1);
-        app_i->m_obstacle = Vector(60, -4.8, 0);
-        app_i->m_safe_avoid_obstacle_distance = 21;
-
+        if (i == 2) { // leader失联
+            app_i->m_is_missing = true;
+        }
+        if (i == 3) { // 新leader
+            app_i->m_is_next_leader = true; // 默认，谁是下一任leader是共识，也就是二级节点必有且只有一个该字段为true
+        }
+        
+        app_i->m_is_simulate_change_leader = true;
         nodes.Get(i)->AddApplication (app_i);
         // ======================= application 的一些参数的初始化 end ===============================
         
