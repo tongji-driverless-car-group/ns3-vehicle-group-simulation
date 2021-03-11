@@ -12,6 +12,7 @@
 #include "GroupInitializer.h"
 #include "Test.h"
 
+
 void TestVGTreeHelper(){
     VGTreeHelper vh;
     vh.AddLeader(0);
@@ -206,8 +207,8 @@ void TestConstructGroup(){
     nodes.Get(6)->AddApplication (app6);
     Simulator::Stop(Seconds(simTime));
     //netAnim可视化
-//    AnimationInterface anim("EvolutionApplication.xml");
-//    anim.SetMobilityPollInterval (Seconds (1));
+    AnimationInterface anim("./scratch/ns3-vehicle-group-simulation/sumofiles/netAnimConstructGroup.xml");
+    anim.SetMobilityPollInterval (Seconds (1));
   
     Simulator::Run();
 
@@ -272,6 +273,108 @@ void TestAvoidObstable() {
     {
         Ptr<EvolutionApplication> app_i = CreateObject<EvolutionApplication>();
         // ======================= application 的一些参数的初始化 begin =============================
+<<<<<<< HEAD
+=======
+        
+        // ---------- 避障相关 -------------
+        if (isInnerObstacle) {
+            // 默认值见EvolutionApplication的构造函数
+            app_i->SetStartTime (Seconds (0));
+            app_i->SetStopTime (Seconds(simTime));
+            if (i == 0) { // 特定车辆停止仿真，当作它是内部障碍
+                app_i->m_is_missing = true;
+            }
+            
+            app_i->m_is_simulate_node_missing = true;
+        } else {
+            // 默认值见EvolutionApplication的构造函数
+            app_i->SetStartTime (Seconds (0));
+            app_i->SetStopTime (Seconds (simTime));
+            app_i->m_is_simulate_avoid_outer_obstacle = true;
+            app_i->m_check_obstacle_interval = Seconds(1);
+            app_i->m_obstacle = Vector(60, -4.8, 0);
+            app_i->m_safe_avoid_obstacle_distance = 21;
+        }
+
+        nodes.Get(i)->AddApplication (app_i);
+        // ======================= application 的一些参数的初始化 end ===============================
+        
+    }
+
+    Simulator::Stop(Seconds(simTime));
+    
+    //初始化车群
+    gi.Construct(nodes);
+  
+    //netAnim可视化
+    if (isInnerObstacle) {
+        AnimationInterface anim("./scratch/ns3-vehicle-group-simulation/sumofiles/avoidObstacle/netAnimAvoidInnerObstacle.xml");
+        anim.SetMobilityPollInterval (Seconds (1));
+    } else {
+        AnimationInterface anim("./scratch/ns3-vehicle-group-simulation/sumofiles/avoidObstacle/netAnimAvoidOuterObstacle.xml");
+        anim.SetMobilityPollInterval (Seconds (1));
+    }
+  
+    Simulator::Run();
+
+    Simulator::Destroy();
+}
+
+void TestChangeLeader() {
+    uint32_t nNodes = 7;//节点数目
+    double simTime = 10;// max: 22
+    
+
+    NodeContainer nodes;
+    nodes.Create(nNodes);
+  
+    LogComponentEnable ("EvolutionApplication", LOG_LEVEL_FUNCTION);
+    
+    //使用NS3的移动模型，可以修改为SUMO的FCD输出
+    // 基点是waf所在目录
+    Ns2MobilityHelper mobility("./scratch/ns3-vehicle-group-simulation/sumofiles/changeLeader/mobility.tcl");
+    mobility.Install(nodes.Begin(), nodes.End());
+
+    VGTreeHelper vh;
+    GroupInitializer gi;
+    
+    // 红色车, changeLeader.rou.xml上的红色车
+    vh.AddLeader(2);
+    vh.AddSubNodesFor(vector<int>({1, 3, 4}), 2);
+    vh.AddSubNodesFor(vector<int>({5}), 1);
+    vh.AddSubNodesFor(vector<int>({6}), 3);
+    vh.AddSubNodesFor(vector<int>({0}), 4);
+    gi.AddGroup(vh.GetTree());
+    
+    gi.PrintGroupStructures();
+    
+    // The below set of helpers will help us to put together the wifi NICs we want
+    YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
+    YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
+    Ptr<YansWifiChannel> channel = wifiChannel.Create ();
+    wifiPhy.SetChannel (channel);
+  
+    //可以调节通信距离
+//    wifiPhy.Set ("TxPowerStart", DoubleValue (20) );
+//    wifiPhy.Set ("TxPowerEnd", DoubleValue (40) );
+
+    // ns-3 supports generate a pcap trace
+    wifiPhy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11);
+    NqosWaveMacHelper wifi80211pMac = NqosWaveMacHelper::Default ();
+    Wifi80211pHelper wifi80211p = Wifi80211pHelper::Default ();
+
+    wifi80211p.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
+                                      "DataMode",StringValue ("OfdmRate6MbpsBW10MHz"),
+                                      "ControlMode",StringValue ("OfdmRate6MbpsBW10MHz"));
+    NetDeviceContainer devices = wifi80211p.Install (wifiPhy, wifi80211pMac, nodes);
+
+    //为节点添加应用
+    for (uint32_t i=0; i<nodes.GetN(); i++)
+    {
+        Ptr<EvolutionApplication> app_i = CreateObject<EvolutionApplication>();
+        // ======================= application 的一些参数的初始化 begin =============================
+        
+>>>>>>> d7e03507f8e7fd4776be1908d22f32da49999a98
         // 默认值见EvolutionApplication的构造函数
         app_i->SetStartTime (Seconds (0));
         app_i->SetStopTime (Seconds (simTime));
@@ -293,8 +396,8 @@ void TestAvoidObstable() {
     gi.Construct(nodes);
   
     //netAnim可视化
-//    AnimationInterface anim("EvolutionApplication.xml");
-//    anim.SetMobilityPollInterval (Seconds (1));
+    AnimationInterface anim("./scratch/ns3-vehicle-group-simulation/sumofiles/changeLeader/netAnimChangeLeader.xml");
+    anim.SetMobilityPollInterval (Seconds (1));
   
     Simulator::Run();
 
