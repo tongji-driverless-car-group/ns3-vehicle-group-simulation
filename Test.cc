@@ -12,6 +12,7 @@
 #include "GroupInitializer.h"
 #include "Test.h"
 
+
 void TestVGTreeHelper(){
     VGTreeHelper vh;
     vh.AddLeader(0);
@@ -211,8 +212,8 @@ void TestConstructGroup(){
     nodes.Get(6)->AddApplication (app6);
     Simulator::Stop(Seconds(simTime));
     //netAnim可视化
-//    AnimationInterface anim("EvolutionApplication.xml");
-//    anim.SetMobilityPollInterval (Seconds (1));
+    AnimationInterface anim("./scratch/ns3-vehicle-group-simulation/sumofiles/netAnimConstructGroup.xml");
+    anim.SetMobilityPollInterval (Seconds (1));
   
     Simulator::Run();
 
@@ -314,8 +315,13 @@ void TestAvoidObstable(bool isInnerObstacle) {
     gi.Construct(nodes);
   
     //netAnim可视化
-//    AnimationInterface anim("EvolutionApplication.xml");
-//    anim.SetMobilityPollInterval (Seconds (1));
+    if (isInnerObstacle) {
+        AnimationInterface anim("./scratch/ns3-vehicle-group-simulation/sumofiles/avoidObstacle/netAnimAvoidInnerObstacle.xml");
+        anim.SetMobilityPollInterval (Seconds (1));
+    } else {
+        AnimationInterface anim("./scratch/ns3-vehicle-group-simulation/sumofiles/avoidObstacle/netAnimAvoidOuterObstacle.xml");
+        anim.SetMobilityPollInterval (Seconds (1));
+    }
   
     Simulator::Run();
 
@@ -398,8 +404,8 @@ void TestChangeLeader() {
     gi.Construct(nodes);
   
     //netAnim可视化
-//    AnimationInterface anim("EvolutionApplication.xml");
-//    anim.SetMobilityPollInterval (Seconds (1));
+    AnimationInterface anim("./scratch/ns3-vehicle-group-simulation/sumofiles/changeLeader/netAnimChangeLeader.xml");
+    anim.SetMobilityPollInterval (Seconds (1));
   
     Simulator::Run();
 

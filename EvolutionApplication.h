@@ -265,7 +265,7 @@ public:
     // ------------ change leader相关 --------------
     bool m_is_simulate_change_leader;
     bool m_is_next_leader; // 是二级节点中引领度最高的节点
-    std::map<Address, bool> m_check_other_second_level_nodes;
+    std::map<Address, bool> m_check_other_second_level_nodes; // 确认其它二级节点也发现leader丢失 
 };
 
 #endif
