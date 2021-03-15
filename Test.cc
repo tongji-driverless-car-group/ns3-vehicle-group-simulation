@@ -202,7 +202,6 @@ void TestConstructGroup(){
     app5->AssignTaskAtTime(1,Seconds(20));
     app5->m_debug_construct = true;
     nodes.Get(5)->AddApplication (app5);
-    Simulator::Stop(Seconds(simTime));
     
     Ptr<EvolutionApplication> app6 = CreateObject<EvolutionApplication>();
     app6->SetStartTime (Seconds (0));
@@ -283,7 +282,9 @@ void TestAvoidObstable(bool isInnerObstacle) {
     {
         Ptr<EvolutionApplication> app_i = CreateObject<EvolutionApplication>();
         // ======================= application 的一些参数的初始化 begin =============================
-        
+        app_i->m_debug_missing = true;
+        app_i->m_debug_construct = true;
+        //app_i->m_debug_hello = true;
         // ---------- 避障相关 -------------
         if (isInnerObstacle) {
             // 默认值见EvolutionApplication的构造函数

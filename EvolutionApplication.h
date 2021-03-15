@@ -70,6 +70,8 @@ typedef struct{
 
 typedef struct{
     bool accept;//0表示不回归，1表示回归
+    NeighborInformation selfInfo;//自己的信息
+
 }ReceiveReplyInformation;
 
 // typedef struct {
@@ -83,10 +85,10 @@ const double HELLO_INTERVAL = 0.5; //心跳包发送间隔 单位s
 const double WAIT_CONSTRUCT_TIME = 5;//等待车群建立消息的时间
 const double CONSTRUCT_INTERVAL = 2;//发送车群建立消息的时间间隔
 
-const double CHECK_MISSING_INTERVAL = 2.0; //检查丢失节点的周期 单位s
+const double CHECK_MISSING_INTERVAL = 1.0; //检查丢失节点的周期 单位s
 const double MAX_HELLO_INTERVAL = 2.0; //确认节点丢失的通信时间限制 单位s
-const double STAY_MISSING_TIME = 5;//从失联状态转为Leader的间隔
-const double SEARCH_TIME = 5;//搜寻的时间
+const double STAY_MISSING_TIME = 10;//从失联状态转为Leader的间隔
+const double SEARCH_TIME = 10;//搜寻的时间
 
 const uint8_t MAX_LEVEL = 8;
 const uint8_t MAX_SUBNODES = 5;
@@ -119,6 +121,9 @@ public:
     
     //判断自己是否是member
     bool isMember();
+
+    //是否与父节点失去联系
+    bool isLost();
 
     // 获取自己的mac地址，debug用
     Address GetAddress();
@@ -204,9 +209,6 @@ public:
     // 查看是否有节点失联
     bool CheckMissing();
 
-    // 检查是否在搜索状态
-    bool IsSearching();
-
     // 人为设定一个时间点，令某节点故障 / 失联
     bool IsMissing();
 
@@ -242,6 +244,9 @@ public:
 
     //
     void SendReportMessage();
+    
+    //
+    void HandleReportMessage();
 
     // 检查是否leader失联
     // 该函数与CheckMissing区别在于，后者只能查找子节点是否missing
@@ -312,12 +317,11 @@ public:
     Time m_search_time; //搜寻失联节点的时间
     Time m_stay_missing_time;//失联节点保持失联状态的时间
     map<Address,Time> m_search_nodes;//需要搜寻节点的列表
-    // Time m_confirm_missing_interval; // 搜索失败，leader向上汇报节点失联
-    Time m_missing_time; // 失联时间
+    // Time m_missing_time; // 失联时间
+    Time m_start_missing_time;
+    Time m_end_missing_time;
     bool m_is_missing; // 是否是失联的内部节点
-
-    // bool m_is_found; // 是找到失联节点的节点
-    // Time m_found_time; // 找到失联节点的时间
+    bool m_debug_missing;//是否输出有关失联信息
     
     // ------------ change leader相关 --------------
     bool m_is_simulate_change_leader;

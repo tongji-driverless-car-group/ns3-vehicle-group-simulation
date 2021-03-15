@@ -28,6 +28,7 @@ const uint8_t CHECK_LEADER_REPLY_MESSAGE = 18;
 const uint8_t NEW_LEADER_MESSAGE = 19;
 const uint8_t NEW_LEADER_REPLY_MESSAGE = 20;
 const uint8_t RECEIVE_REPLY_MESSAGE = 21;
+const uint8_t REPORT_MESSAGE = 22;
 const uint8_t GROUP_MESSAGE = 0x80;
 
 namespace ns3
